@@ -1,0 +1,22 @@
+node_modules/
+npm-debug.log*
+.env*
+doc/
+.vscode/
+
+!.gitignore
+!.gitkeep
+
+# Elastic Beanstalk Files
+
+.elasticbeanstalk/*
+
+!.elasticbeanstalk/*.cfg.yml
+
+!.elasticbeanstalk/*.global.yml
+
+# GCP
+app.yaml
+
+*.js.map
+

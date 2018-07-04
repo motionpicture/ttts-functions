@@ -4,7 +4,7 @@ const PosSales = require('./posEntity.js');
 const configs  = require('../configs/app.js');
 
 //カラムを更新
-const insertPosSales = async (header, rows) => {
+const getPosSales = async (header, rows) => {
     
     //エンティティを作成
     let entities = rows.map(
@@ -15,6 +15,11 @@ const insertPosSales = async (header, rows) => {
         }
     );
 
+    return entities;
+}
+
+//データを保存
+const insertPosSales = async (entities) => {
     for (var x in entities) {
         var cols = [], vals = [];
         for (var y in entities[x]) {
@@ -32,6 +37,7 @@ const insertPosSales = async (header, rows) => {
         try {
             //エンティティを保存する
             const pool = await sql.connect(configs.mssql);
+            //console.log(`INSERT INTO pos_sales(${cols.join(',')}) VALUES (${vals.join(',')});`);
             await pool.request().query(`INSERT INTO pos_sales(${cols.join(',')}) VALUES (${vals.join(',')});`);
         } catch (error) {
             //Logファイルにバグを書く
@@ -42,4 +48,5 @@ const insertPosSales = async (header, rows) => {
 }
 
 //輸出
+module.exports.getPosSales = getPosSales;
 module.exports.insertPosSales = insertPosSales;

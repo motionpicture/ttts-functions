@@ -15,7 +15,7 @@ const configs = {
     },
     env: 'dev',
     container_name: 'container4bi',
-    csv_working: 'working/pos-data.csv',
+    csv_working: 'working/[0-9a-zA-Z-_\\s]+.csv',
     csv_complete: 'complete/pos-data.csv'
 };
 

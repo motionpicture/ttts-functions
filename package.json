@@ -10,7 +10,6 @@
     "dotenv": "^5.0.0",
     "js-yaml": "^3.12.0",
     "mssql": "^4.1.0",
-    "sprintf-js": "^1.1.1",
     "tedious": "^2.6.1"
   },
   "devDependencies": {},

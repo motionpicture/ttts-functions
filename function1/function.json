@@ -1,0 +1,12 @@
+{
+  "bindings": [
+    {
+      "name": "container4bi",
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "container4bi/working/{name}",
+      "connection": "AzureWebJobsDashboard"
+    }
+  ],
+  "disabled": false
+}

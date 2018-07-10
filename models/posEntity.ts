@@ -1,5 +1,41 @@
 //SQL Server
 class PosSalesEntity {
+    private id: number;
+    private store_code: string;
+    private pos_no: number;
+    private receipt_no: string;
+    private no1: number;
+    private no2: number;
+    private type: number;
+    private payment_no: string;
+    private performance_id: number;
+    private seat_code: string;
+    private performance_type: number;
+    private performance_day: string;
+    private start_time: string;
+    private sales_date: string;
+    private section_code: string;
+    private plu_code: string;
+    private item_name: string;
+    private sales_amount: number;
+    private unit_price: number;
+    private unit: number;
+    private sum_amount: number;
+    private payment_type: number;
+    private cash: number;
+    private payment_type1: number;
+    private payment_type2: number;
+    private payment_type3: number;
+    private payment_type4: number;
+    private payment_type5: number;
+    private payment_type6: number;
+    private payment_type7: number;
+    private payment_type8: number;
+    private customer1: number;
+    private customer2: string;
+    private entry_flg: string;
+    private entry_date: string;
+
     constructor() {
         //番号
         this.id = null;
@@ -73,4 +109,5 @@ class PosSalesEntity {
         this.entry_date = null;
     }
 }
+
 module.exports = PosSalesEntity;

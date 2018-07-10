@@ -13,10 +13,8 @@ const configs = {
             useHeader: true
         }
     },
-    env: 'dev',
-    container_name: 'container4bi',
-    csv_working: 'working/[0-9a-zA-Z-_\\s]+.csv',
-    csv_complete: 'complete/pos-data.csv'
+    containerName: 'container4bi',
+    csv_working: 'working/[0-9a-zA-Z-_\\s]+.csv'
 };
 
 module.exports = configs;

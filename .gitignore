@@ -3,6 +3,7 @@ npm-debug.log*
 .env*
 doc/
 .vscode/
+node_modules/
 
 !.gitignore
 !.gitkeep

@@ -1,4 +1,10 @@
 {
+  "author": {
+    "name": "Motionpicture co.,ltd."
+  },
+  "contributors": [
+    
+  ],
   "name": "ttts-functions-develop",
   "version": "1.0.0",
   "description": "【子課題】POSデータ集約",
@@ -15,5 +21,10 @@
   },
   "devDependencies": {
     "@types/node": "^10.5.2"
+  },
+  "license": "UNLICENSED",
+  "repository": { 
+    "type" : "git", 
+    "url" : "https://github.com/motionpicture/ttts-functions"
   }
 }

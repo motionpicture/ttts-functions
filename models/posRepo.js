@@ -39,12 +39,7 @@ const insertPosSales = (entities) => __awaiter(this, void 0, void 0, function* (
         var data = [];
         for (var y in entities[x]) {
             if (entities[x][y] != null) {
-                if (Number.isInteger(entities[x][y])) {
-                    data.push('@' + y.replace('_', '') + ' = ' + entities[x][y]);
-                }
-                else {
-                    data.push('@' + y.replace('_', '') + ' = ' + `'${entities[x][y]}'`);
-                }
+                data.push('@' + y + ' = ' + `'${entities[x][y]}'`);
             }
         }
         yield exec(`EXEC dbo.mergePosSales ${data.join(', ')}`);

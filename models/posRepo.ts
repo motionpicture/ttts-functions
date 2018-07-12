@@ -39,14 +39,9 @@ const insertPosSales = async (entities) => {
         var data = [];
         for (var y in entities[x]) {
             if (entities[x][y] != null) {
-
-                if (Number.isInteger(entities[x][y])) {
-                    data.push('@' + y.replace('_', '') + ' = ' + entities[x][y]);
-                } else {
-                    data.push('@' + y.replace('_', '') + ' = ' + `'${entities[x][y]}'`);
-                }
+                data.push('@' + y + ' = ' + `'${entities[x][y]}'`);
             }
-        }  
+        }
 
         await exec(`EXEC dbo.mergePosSales ${data.join(', ')}`);
     }

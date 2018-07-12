@@ -4,9 +4,9 @@ import * as storage from 'azure-storage';
 import * as configs from '../configs/app.js';
 
 //Logファイルを書く
-module.exports.writeErrorLog = async (text: any) => {
-    const localFile = `${__dirname}/../logs/error-${moment().format("YYYYMMDD")}.log`;
-    const targetBlob = `logs/error-${moment().format("YYYYMMDD")}.log`;
+const writeLog = async (type: string, text: any) => {
+    const localFile = `${__dirname}/../logs/${type}-${moment().format("YYYYMMDD")}.log`;
+    const targetBlob = `logs/${type}-${moment().format("YYYYMMDD")}.log`;
     let stream: any = '';
 
     await storage.createBlobService().getBlobToStream(configs.containerName, targetBlob, fs.createWriteStream(localFile), async (error, result, res) => {
@@ -16,7 +16,7 @@ module.exports.writeErrorLog = async (text: any) => {
             stream = await fs.createWriteStream(localFile, {flags:'a'});
         }
 
-        stream.write(text.stack + "\n\n");
+        stream.write(`${moment().format()}: ${text}` + "\n");
         stream.end();
 
         //Storageにファイルを遷移
@@ -28,4 +28,13 @@ module.exports.writeErrorLog = async (text: any) => {
             });
         });
     });
+}
+
+module.exports.writeInfoLog = async (text: any) => {
+    writeLog('info', text);
+}
+
+
+module.exports.writeErrorLog = async (text: any) => {
+    writeLog('error', text);
 }

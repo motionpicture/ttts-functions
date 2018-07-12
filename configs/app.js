@@ -13,6 +13,7 @@ const configs = {
             useHeader: true
         }
     },
+    maxRecordExec: 500,
     containerName: 'container4bi',
     csv_working: 'working/[0-9a-zA-Z-_\\s]+.csv'
 };

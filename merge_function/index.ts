@@ -74,7 +74,7 @@ export async function run (context, myBlob) {
                 }
             } catch (error) {
                 //Logファイルにバグを書く
-                Logs.writeErrorLog(error);
+                Logs.writeErrorLog(error.stack);
                 return;
             }
         }
@@ -84,7 +84,7 @@ export async function run (context, myBlob) {
         await moveListFileWorking(context.bindingData);
 
     } catch (error) {
-        Logs.writeErrorLog(error);
+        Logs.writeErrorLog(error.stack);
         return;
     }
 
@@ -100,12 +100,12 @@ async function moveListFileWorking (fileReading) {
         if (!error) {
             await storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, async (error, result, res) => {
                 if (error) {
-                    Logs.writeErrorLog(error);
+                    Logs.writeErrorLog(error.stack);
                     return;
                 }
             });
         } else {
-            Logs.writeErrorLog(error);
+            Logs.writeErrorLog(error.stack);
             return;
         }
     });

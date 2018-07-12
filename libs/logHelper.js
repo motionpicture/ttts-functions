@@ -13,9 +13,9 @@ const moment = require("moment");
 const storage = require("azure-storage");
 const configs = require("../configs/app.js");
 //Logファイルを書く
-module.exports.writeErrorLog = (text) => __awaiter(this, void 0, void 0, function* () {
-    const localFile = `${__dirname}/../logs/error-${moment().format("YYYYMMDD")}.log`;
-    const targetBlob = `logs/error-${moment().format("YYYYMMDD")}.log`;
+const writeLog = (type, text) => __awaiter(this, void 0, void 0, function* () {
+    const localFile = `${__dirname}/../logs/${type}-${moment().format("YYYYMMDD")}.log`;
+    const targetBlob = `logs/${type}-${moment().format("YYYYMMDD")}.log`;
     let stream = '';
     yield storage.createBlobService().getBlobToStream(configs.containerName, targetBlob, fs.createWriteStream(localFile), (error, result, res) => __awaiter(this, void 0, void 0, function* () {
         if (error) {
@@ -24,7 +24,7 @@ module.exports.writeErrorLog = (text) => __awaiter(this, void 0, void 0, functio
         else {
             stream = yield fs.createWriteStream(localFile, { flags: 'a' });
         }
-        stream.write(text.stack + "\n\n");
+        stream.write(`${moment().format()}: ${text}` + "\n");
         stream.end();
         //Storageにファイルを遷移
         stream.on('finish', () => {
@@ -35,4 +35,10 @@ module.exports.writeErrorLog = (text) => __awaiter(this, void 0, void 0, functio
             });
         });
     }));
+});
+module.exports.writeInfoLog = (text) => __awaiter(this, void 0, void 0, function* () {
+    writeLog('info', text);
+});
+module.exports.writeErrorLog = (text) => __awaiter(this, void 0, void 0, function* () {
+    writeLog('error', text);
 });

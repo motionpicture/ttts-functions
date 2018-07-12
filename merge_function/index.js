@@ -79,7 +79,7 @@ function run(context, myBlob) {
                 }
                 catch (error) {
                     //Logファイルにバグを書く
-                    Logs.writeErrorLog(error);
+                    Logs.writeErrorLog(error.stack);
                     return;
                 }
             }
@@ -88,7 +88,7 @@ function run(context, myBlob) {
             yield moveListFileWorking(context.bindingData);
         }
         catch (error) {
-            Logs.writeErrorLog(error);
+            Logs.writeErrorLog(error.stack);
             return;
         }
         context.log('---END---');
@@ -104,13 +104,13 @@ function moveListFileWorking(fileReading) {
             if (!error) {
                 yield storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
                     if (error) {
-                        Logs.writeErrorLog(error);
+                        Logs.writeErrorLog(error.stack);
                         return;
                     }
                 }));
             }
             else {
-                Logs.writeErrorLog(error);
+                Logs.writeErrorLog(error.stack);
                 return;
             }
         }));

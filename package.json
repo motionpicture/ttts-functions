@@ -2,18 +2,16 @@
   "author": {
     "name": "Motionpicture co.,ltd."
   },
-  "contributors": [
-    
-  ],
+  "contributors": [],
   "name": "ttts-functions-develop",
   "version": "1.0.0",
   "description": "【子課題】POSデータ集約",
   "main": "index.js",
   "dependencies": {
-    "@motionpicture/ttts-domain": "^13.2.0",
     "azure-storage": "^2.10.0",
-    "csvtojson": "^2.0.4",
+    "csvtojson": "^2.0.6",
     "dotenv": "^5.0.0",
+    "fast-csv": "^2.4.1",
     "js-yaml": "^3.12.0",
     "moment": "^2.22.2",
     "mssql": "^4.1.0",
@@ -23,8 +21,8 @@
     "@types/node": "^10.5.2"
   },
   "license": "UNLICENSED",
-  "repository": { 
-    "type" : "git", 
-    "url" : "https://github.com/motionpicture/ttts-functions"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/motionpicture/ttts-functions"
   }
 }

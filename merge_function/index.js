@@ -9,110 +9,82 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const csv = require("csvtojson");
-const storage = require("azure-storage");
-const yaml = require("js-yaml");
-const fs = require("fs");
 const request = require("request");
-const ttts = require("@motionpicture/ttts-domain");
-const mongooseConnectionOptions_1 = require("../configs/mongooseConnectionOptions");
-const configs = require("../configs/app.js");
-const posRepo = require("../models/posRepo.js");
-const posEntity = require("../models/posEntity.js");
+const moment = require("moment");
 const Logs = require("../libs/logHelper");
+const posRepo = require("../models/pos_sales");
+const configs = require("../configs/app.js");
+const mongoose = require("mongoose");
+require("../models/reservation.js");
+mongoose.Promise = global.Promise;
 //開発環境で使うだけ、本番でこれを使わない
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').load();
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/working/pos-data.csv',
-            name: 'pos-data.csv'
+            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/son/csv_20180717144124.csv',
+            //uri: 'https://tttsstorage.blob.core.windows.net/container4bi/son/csv_20180715165413.csv',
+            name: 'csv_20180717144124.csv'
+            //name: 'csv_20180715165413.csv'
         },
         log: (text) => {
             console.log(text);
         }
     }, null);
 }
-//大切な機能
 function run(context, myBlob) {
     return __awaiter(this, void 0, void 0, function* () {
-        context.log('---START---');
-        const rows = [];
+        context.log(moment().format('YYYY-MM-DD HH:mm:ss'));
         try {
-            //CSVの項目を読む
-            const csvPath = `${__dirname}/../configs/CSV/101.csv.yml`;
-            const header = Object.getOwnPropertyNames(yaml.safeLoad(fs.readFileSync(csvPath, 'utf8')));
-            const fileInfo = request.get(context.bindingData.uri);
-            //CSVのデータをStorageで読む
-            yield csv({ noheader: true, output: "csv" })
-                .fromStream(fileInfo)
-                .then(docs => {
-                if (configs.csv.csv_101.useHeader) {
-                    docs.shift();
-                }
-                docs.forEach(doc => {
-                    rows.push(doc);
-                });
-            });
-            //PosSalesエンティティを作成
-            const entities = yield posRepo.getPosSales(header, rows);
-            ttts.mongoose.connect(process.env.MONGOLAB_URI, mongooseConnectionOptions_1.default);
-            for (var x in entities) {
-                try {
-                    const conditions = [
-                        { payment_no: entities[x].payment_no },
-                        { seat_code: entities[x].seat_code },
-                        { performance_day: entities[x].performance_day }
-                    ];
-                    const reservationRepo = new ttts.repository.Reservation(ttts.mongoose.connection);
-                    const reservations = yield reservationRepo.reservationModel.find({ $and: conditions })
-                        .exec()
-                        .then(docs => docs.map(doc => doc.toObject()));
-                    if (reservations.length != 1)
-                        continue;
-                    if (reservations[0].checkins.length >= 1) {
-                        entities[x].entry_flg = 'TRUE';
-                        entities[x].entry_date = reservations[0].checkins[0].when.toISOString();
-                    }
-                    else {
-                        entities[x].entry_flg = 'FALSE';
-                    }
-                }
-                catch (error) {
-                    //Logファイルにバグを書く
-                    Logs.writeErrorLog(error.stack);
-                    return;
-                }
-            }
-            ttts.mongoose.disconnect();
-            yield posRepo.insertPosSales(entities);
-            yield moveListFileWorking(context.bindingData);
+            mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
+            const rows = yield readCsv(context.bindingData.uri);
+            const entities = yield posRepo.getPosSales(rows);
+            const reservations = yield getCheckins(entities);
+            const posSales = yield posRepo.updateCheckins(entities, reservations);
+            yield posRepo.saveToPosSalesTmp(posSales);
         }
         catch (error) {
-            Logs.writeErrorLog(error.stack);
-            return;
+            context.log(error);
         }
-        context.log('---END---');
+        context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
+        mongoose.connection.close();
     });
 }
 exports.run = run;
-//全部ファイルを遷移
-function moveListFileWorking(fileReading) {
+function getCheckins(entities) {
     return __awaiter(this, void 0, void 0, function* () {
-        const oriBlob = 'working/' + fileReading.name;
-        const targetBlob = 'complete/' + fileReading.name;
-        yield storage.createBlobService().startCopyBlob(fileReading.uri + '?sasString', configs.containerName, targetBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
-            if (!error) {
-                yield storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
-                    if (error) {
-                        Logs.writeErrorLog(error.stack);
-                        return;
-                    }
-                }));
-            }
-            else {
-                Logs.writeErrorLog(error.stack);
-                return;
-            }
-        }));
+        const conds = createConds4Checkins(entities);
+        return yield mongoose.model('Reservation').find({ $or: [conds[0]] }, {
+            checkins: true, payment_no: true, seat_code: true, performance_day: true
+        }).then(docs => {
+            let checkins = {};
+            docs.forEach(doc => {
+                const prop = doc.payment_no + doc.seat_code + doc.performance_day;
+                checkins[prop] = { entry_flg: 'FALSE', entry_date: '' };
+                if (doc.checkins.length >= 1)
+                    checkins[prop] = { entry_flg: 'TRUE', entry_date: doc.checkins[0].when.toISOString() };
+            });
+            return checkins;
+        });
+    });
+}
+function createConds4Checkins(entities) {
+    return entities.map(entity => {
+        return { $and: [
+                { payment_no: entity.payment_no },
+                { seat_code: entity.seat_code },
+                { performance_day: entity.performance_day }
+            ]
+        };
+    });
+}
+function readCsv(filePath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const fileInfo = request.get(filePath);
+        return yield csv({ noheader: true, output: "csv" }).fromStream(fileInfo).then(docs => {
+            if (configs.csv.csv_101.useHeader)
+                docs.shift();
+            return docs;
+        });
     });
 }

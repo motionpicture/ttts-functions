@@ -9,58 +9,64 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const csv = require("csvtojson");
+const storage = require("azure-storage");
 const request = require("request");
 const moment = require("moment");
-const Logs = require("../libs/logHelper");
-const posRepo = require("../models/pos_sales");
 const configs = require("../configs/app.js");
+const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
 require("../models/reservation.js");
 mongoose.Promise = global.Promise;
-//開発環境で使うだけ、本番でこれを使わない
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').load();
+    //this code will be open, if run on local use for development
+    /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/son/csv_20180717144124.csv',
-            //uri: 'https://tttsstorage.blob.core.windows.net/container4bi/son/csv_20180715165413.csv',
-            name: 'csv_20180717144124.csv'
-            //name: 'csv_20180715165413.csv'
+            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/tmp/son',
+            name: 'son'
         },
         log: (text) => {
             console.log(text);
         }
     }, null);
+    */
 }
-function run(context, myBlob) {
-    return __awaiter(this, void 0, void 0, function* () {
-        context.log(moment().format('YYYY-MM-DD HH:mm:ss'));
-        try {
-            mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
-            const rows = yield readCsv(context.bindingData.uri);
-            const entities = yield posRepo.getPosSales(rows);
-            const reservations = yield getCheckins(entities);
-            const posSales = yield posRepo.updateCheckins(entities, reservations);
-            yield posRepo.saveToPosSalesTmp(posSales);
-        }
-        catch (error) {
-            context.log(error);
-        }
-        context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
-        mongoose.connection.close();
-    });
-}
-exports.run = run;
+//if run on local use export async function run (context, myBlob) {
+module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* () {
+    //export async function run (context, myBlob) {
+    context.log('START: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
+    try {
+        mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
+        const rows = yield readCsv(context.bindingData.uri);
+        const entities = yield posRepo.getPosSales(rows);
+        const reservations = yield getCheckins(entities);
+        yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
+            yield posRepo.saveToPosSalesTmp(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
+                yield moveListFileWorking(context.bindingData);
+            }));
+        }));
+    }
+    catch (error) {
+        context.log(error);
+    }
+    context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
+    mongoose.connection.close();
+});
+/**
+ * Get data checkins from mongoose db
+ * @param entities [PosSalesEntity, PosSalesEntity, ...]
+ */
 function getCheckins(entities) {
     return __awaiter(this, void 0, void 0, function* () {
         const conds = createConds4Checkins(entities);
-        return yield mongoose.model('Reservation').find({ $or: [conds[0]] }, {
+        return yield mongoose.model('Reservation').find({ $or: conds }, {
             checkins: true, payment_no: true, seat_code: true, performance_day: true
         }).then(docs => {
             let checkins = {};
             docs.forEach(doc => {
                 const prop = doc.payment_no + doc.seat_code + doc.performance_day;
-                checkins[prop] = { entry_flg: 'FALSE', entry_date: '' };
+                checkins[prop] = { entry_flg: 'FALSE', entry_date: null };
                 if (doc.checkins.length >= 1)
                     checkins[prop] = { entry_flg: 'TRUE', entry_date: doc.checkins[0].when.toISOString() };
             });
@@ -68,6 +74,10 @@ function getCheckins(entities) {
         });
     });
 }
+/**
+ * Converted from the entities found in the csv file into conditions to search in mongoose
+ * @param entities [PosSalesEntity, PosSalesEntity, ...]
+ */
 function createConds4Checkins(entities) {
     return entities.map(entity => {
         return { $and: [
@@ -78,6 +88,11 @@ function createConds4Checkins(entities) {
         };
     });
 }
+/**
+ * Reads all the records in the csv file to create entities stored in the sql server
+ * @param filePath string Relative path to csv file
+ * @returns Array
+ */
 function readCsv(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
         const fileInfo = request.get(filePath);
@@ -86,5 +101,18 @@ function readCsv(filePath) {
                 docs.shift();
             return docs;
         });
+    });
+}
+/**
+ * After saving to the sql server, move the file from the working directory to the complete directory, leaving the file name unchanged
+ * @param fileReading object contains the file information you are reading
+ */
+function moveListFileWorking(fileReading) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const oriBlob = 'working/' + fileReading.name;
+        const targetBlob = 'complete/' + fileReading.name;
+        yield storage.createBlobService().startCopyBlob(fileReading.uri + '?sasString', configs.containerName, targetBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
+            yield storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () { }));
+        }));
     });
 }

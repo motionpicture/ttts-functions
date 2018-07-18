@@ -8,5 +8,9 @@
    "connection": "AzureWebJobsDashboard"
   }
  ],
- "disabled": false
+ "disabled": false,
+ "_originalEntryPoint": false,
+ "_originalScriptFile": "index.js",
+ "scriptFile": "../.funcpack/index.js",
+ "entryPoint": "merge_function"
 }

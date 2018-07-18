@@ -3,32 +3,12 @@ import * as sql from 'mssql';
 import * as moment from 'moment';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
-
-const configs  = require('../configs/app.js');
-const Logs = require("../libs/logHelper");
+import * as configs from '../configs/app.js';
 
 const posSalesRepository = {
-
-    exec: async (sqlString) => {
-        let result: any;
-    
-        try {
-            const pool = await new sql.ConnectionPool(configs.mssql).connect();
-            const result = await pool.request().query(sqlString);
-    
-            pool.close();
-            return result;
-        } catch (error) {
-            Logs.writeErrorLog(error.stack);
-        }
-    },
-    
     /**
      * Initialize object from data that read in csv file
-     * 
      * @param rows Array [[x,x,x,x,...], [x,x,x,x,...], [x,x,x,x,...]]
-     * @author sonph
-     * @since 2018/07/15
      */
     getPosSales: async (rows: any) => {
 
@@ -44,20 +24,40 @@ const posSalesRepository = {
         });
     },
 
-    saveToPosSalesTmp: async (entities: any) => {
+    /**
+     * Set entry_flg and entry_date values to proceed to save to clipboard
+     * @param entities [PosSalesEntity1, PosSalesEntity2, ...]
+     * @param reservations object {(doc.payment_no + doc.seat_code + doc.performance_day): xxx, ...}
+     */
+    setCheckins: async (entities: any, reservations: any) => {
+        return entities.map (entity => {
+            const prop = entity.payment_no + entity.seat_code + entity.performance_day;
+            if (reservations[prop] !== undefined) {
+                entity.entry_flg = reservations[prop].entry_flg;
+                entity.entry_date = reservations[prop].entry_date;
+            }
+            return entity;
+        });
+    },
+
+    /**
+     * Saves data to clipboard in database to merge faster
+     * @param entities [PosSalesEntity1, PosSalesEntity2, ...]
+     * @param context Azure function of variable
+     */
+    saveToPosSalesTmp: async (entities: any, context) => {
         
         //Read the column information of csv file
         const csvPath = `${__dirname}/../configs/pos_sales.csv.yml`;
         const header = Object.getOwnPropertyNames(yaml.safeLoad(fs.readFileSync(csvPath, 'utf8')));
+        header.push('entry_flg');
+        header.push('entry_date');
         
         entities = entities.map( entity => {
             let props = [];
-            header.forEach( x => props.push(`'${entity[x] !== null ? entity[x] : ''}'`));
-            return `SELECT ${props.join(',')}`;
+            header.forEach( x => props.push(entity[x] !== null ? `'${entity[x]}'`: `NULL`));
+            return `(${props.join(',')})`;
         });
-        let tmp = [];
-        for (let i = 0; i < 1400; i++) tmp.push(entities[i]); 
-        entities = tmp;
 
         let parts = [[]];
         for (let x in entities) {
@@ -66,108 +66,111 @@ const posSalesRepository = {
             } else parts.push([entities[x]]);
         }
 
+        sql.close();
         const connection = await sql.connect(configs.mssql);
-        const threadings = posSalesRepository.getMuiltiThreading(parts, {header: header, connect: connection});
-        await Promise.all(threadings).then((values) => {
+        const options = {context: context, header: header, connect: connection};
+        const threadings = posSalesRepository.getMuiltiThreading(parts, options);
+        
+        await Promise.all(threadings).then(async (values) => {
+            await posSalesRepository.mergeFunc(options);
             connection.close();
         });
     },
 
+    /**
+     * Split into multiple processes to save data to the database faster
+     * @param parts Array [string, string,...]
+     * @param options object helper extra
+     */
     getMuiltiThreading: (parts: any, options: any) => {
         const promises = [];
         for (let i = 0; i < parts.length; i++) {
-
             const threading = new Promise( async (resolve, reject) => {
-                const sqlString = `INSERT INTO pos_sales_tmp (${options.header.join(',')}) ${parts[i].join(' UNION ALL ')};`;
+                const sqlString = `INSERT INTO pos_sales_tmp (${options.header.join(',')}) VALUES ${parts[i].join(', ')};`;
+
                 options.connect.request().query(sqlString).then(() => {
-                    console.log(`connected ${i} end!`);
+                    options.context.log(`${i + 1}分追加しました!`);
                     resolve(true);
                 });
-            })
+            });
             promises.push(threading);
         }
         return promises;
     },
 
-    updateCheckins: async (entities: any, reservations: any) => {
+    /**
+     * Perform a new addition if the data does not exist and update if the data already exists
+     * @param options object helper extra
+     */
+    mergeFunc: async (options) => {
+        const insertSql = `
+            INSERT pos_sales (${options.header.join(',')})  
+            SELECT ${options.header.join(',')} 
+            FROM pos_sales_tmp   
+            WHERE NOT EXISTS (
+                SELECT * FROM pos_sales ps 
+                WHERE ps.payment_no = pos_sales_tmp.payment_no AND ps.seat_code = pos_sales_tmp.seat_code AND ps.performance_day = pos_sales_tmp.performance_day
+            );
+        `;
+        await options.connect.request().query(insertSql);
 
-        entities.map (entity => {
-            const prop = entity.payment_no + entity.seat_code + entity.performance_day;
-            if (reservations[prop] !== undefined) {
-                entity.entry_flg = reservations[prop].entry_flg;
-                entity.entry_date = reservations[prop].entry_date;
-            }
-            return entity;
-        });
+        const updateSql = `
+            UPDATE tgt 
+                SET entry_flg = src.entry_flg, entry_date = src.entry_date 
+                FROM dbo.pos_sales AS tgt
+            INNER JOIN pos_sales_tmp AS src ON (tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);
+        `;
+        await options.connect.request().query(updateSql);
+        await options.connect.request().query(`TRUNCATE TABLE pos_sales_tmp;`);
+    },
 
-        return entities;
-    },
-    
-    insertPosSales: async (entities) => {
-        for (var x in entities) {
-            var data = [];
-            for (var y in entities[x]) {
-                if (entities[x][y] != null) {
-                    data.push('@' + y + ' = ' + `'${entities[x][y]}'`);
-                }
-            }
-    
-            await this.exec(`EXEC dbo.mergePosSales ${data.join(', ')}`);
-        }
-    },
-    
-    countListPosSales: async (condition: any) => {
-        const sqlCount = `
-            SELECT COUNT(*) AS length
-            FROM pos_sales 
-            WHERE entry_date BETWEEN '${condition.from}' AND '${condition.to}';`;
-        
-        const result: any = await this.exec(sqlCount);
-        return result.recordset[0].length;
-    },
-    
-    getListPosSales: async (condition: any, limit: any) => {
-        const t: any[] = [];
-    
+    /**
+     * connect into SQL server to get datas had performance_day in period supplied on link
+     * @param conditions {form: '20130301', to: '20130302'}
+     * @param context Azure function of variable
+     */
+    searchPosSales: async (conditions, context) => {
         let sqlString = `
             SELECT id, payment_no, seat_code, performance_day 
             FROM pos_sales 
-            WHERE entry_date BETWEEN '${condition.from}' AND '${condition.to}'
-            `;
-    
-        if (limit !== undefined) {
-            sqlString += `ORDER BY id ASC OFFSET ${limit.offset} ROWS FETCH NEXT ${limit.limit} ROWS ONLY;`;
-        }
-        
-        const result = await this.exec(sqlString);
-        if (result.recordset.length > 0) {
-            result.recordset.map(record => {
-                t.push(record);
+            WHERE performance_day >= '${conditions.from}' AND performance_day <= '${conditions.to}';`;
+
+        sql.close();
+        return await sql.connect(configs.mssql).then(async connection => {
+            return await connection.request().query(sqlString).then(docs => {
+                connection.close();
+                return docs.recordset.map(doc => {
+                    return { $and: [
+                            { payment_no: doc.payment_no },
+                            { seat_code: doc.seat_code },
+                            { performance_day: doc.performance_day }]}
+                });
             });
-        }
-    
-        return t;
-    },
-    
-    updateListPosSales: async (reservations: any[]) => {
-    
-        let dataString = [];
-        reservations.forEach(r => {
-            dataString.push(`('${r.payment_no}', '${r.seat_code}', '${r.performance_day}', '${r.entry_flg}', '${r.entry_date}')`);
         });
-    
-        let sqlString = `
+    },
+
+    /**
+     * Update the checkins value in sql server, used for update_function
+     * @param entities [entity1, entity2, entity3]
+     * @param context Azure function of variable
+     */
+    reUpdateCheckins: async (entities, context) => {
+        let updateSql = `
             UPDATE tgt
             SET entry_flg = src.entry_flg, entry_date = src.entry_date
             FROM dbo.pos_sales AS tgt
             INNER JOIN (
-                VALUES
-                ${dataString.join(',')}
+                VALUES ${entities.join(',')}
             ) AS src (payment_no, seat_code, performance_day, entry_flg, entry_date) 
-            ON (tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);
-        `;
-    
-        await this.exec(sqlString);
+            ON (tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`;
+
+        sql.close();
+        await sql.connect(configs.mssql).then(async connection => {
+            connection.request().query(updateSql).then(() => {
+                context.log(`更新しました!`);
+                connection.close();
+            });
+        });
     }
 }
 module.exports = posSalesRepository;

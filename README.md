@@ -16,7 +16,11 @@ node.jsで使用するための東京タワーオンラインチケットシス�
 ## Usage
 
 ```shell
-npm install --save @motionpicture/ttts-domain
+npm install
+
+funcpack pack ./
+cd .funcpack/
+func azure functionapp publish **ttts-functions-develop**
 ```
 
 ### Environment variables

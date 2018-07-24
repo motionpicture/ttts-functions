@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 //使用するモジュール
 const sql = require("mssql");
+const moment = require("moment");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const configs = require("../configs/app.js");
@@ -129,7 +130,13 @@ const posSalesRepository = {
         let sqlString = `
             SELECT id, payment_no, seat_code, performance_day 
             FROM pos_sales 
-            WHERE performance_day >= '${conditions.from}' AND performance_day <= '${conditions.to}';`;
+            WHERE 1 = 1`;
+        if (conditions.from != null) {
+            sqlString += ` AND performance_day >= '${conditions.from}'`;
+        }
+        if (conditions.to != null) {
+            sqlString += ` AND performance_day <= '${conditions.to}'`;
+        }
         sql.close();
         return yield sql.connect(configs.mssql).then((connection) => __awaiter(this, void 0, void 0, function* () {
             return yield connection.request().query(sqlString).then(docs => {
@@ -138,7 +145,7 @@ const posSalesRepository = {
                     return { $and: [
                             { payment_no: doc.payment_no },
                             { seat_code: doc.seat_code },
-                            { performance_day: doc.performance_day }
+                            { performance_day: moment(doc.performance_day).format('YYYYMMDD') }
                         ] };
                 });
             });

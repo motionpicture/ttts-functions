@@ -21,10 +21,10 @@ payment_no:
     field_label: 購入番号
 performance_id:
     field: performance_id
-    field_label: ﾊﾟﾌｫｰﾏﾝｽID
+    field_label: パフォーマンスID
 seat_code:
     field: seat_code
-    field_label: 座席番号
+    field_label: 席番号
 performance_type:
     field: performance_type
     field_label: 予約区分
@@ -42,7 +42,7 @@ section_code:
     field_label: 部門ｺｰﾄﾞ
 plu_code:
     field: plu_code
-    field_label: PLUｺｰﾄﾞ
+    field_label: PLUコード
 item_name:
     field: item_name
     field_label: 商品名

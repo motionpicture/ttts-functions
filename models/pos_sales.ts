@@ -133,7 +133,14 @@ const posSalesRepository = {
         let sqlString = `
             SELECT id, payment_no, seat_code, performance_day 
             FROM pos_sales 
-            WHERE performance_day >= '${conditions.from}' AND performance_day <= '${conditions.to}';`;
+            WHERE 1 = 1`;
+        
+        if (conditions.from != null) {
+            sqlString += ` AND performance_day >= '${conditions.from}'`;
+        }
+        if (conditions.to != null) {
+            sqlString += ` AND performance_day <= '${conditions.to}'`;
+        }
 
         sql.close();
         return await sql.connect(configs.mssql).then(async connection => {
@@ -143,7 +150,7 @@ const posSalesRepository = {
                     return { $and: [
                             { payment_no: doc.payment_no },
                             { seat_code: doc.seat_code },
-                            { performance_day: doc.performance_day }]}
+                            { performance_day: moment(doc.performance_day).format('YYYYMMDD') }]}
                 });
             });
         });

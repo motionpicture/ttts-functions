@@ -1,7 +1,6 @@
 import * as request from 'request';
 import * as moment from 'moment';
 import * as configs from '../configs/app.js';
-import { common } from 'azure-storage';
 
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");

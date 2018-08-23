@@ -1,16 +1,20 @@
 const configs = {
     mssql: {
-        user: process.env.MSSQL_USER,
-        password: process.env.MSSQL_PASSWORD,
-        server: process.env.MSSQL_SERVER,
-        database: process.env.MSSQL_DATABASE,
+        user: 'aggregationAdmin',
+        //user: process.env.MSSQL_USER,
+        password: 'TTTS!admin',
+        //password: process.env.MSSQL_PASSWORD,
+        server: 'ttts-data-aggregation-development-sqlserver.database.windows.net',
+        //server: process.env.MSSQL_SERVER,
+        database: 'ttts-data-aggregation-development-sqldatabase',
+        //database: process.env.MSSQL_DATABASE,
         connectionTimeout: 600000,
         requestTimeout: 600000,
         options: {
             encrypt: true
         },
         pool: {
-            max: 10000,
+            max: 100,
             min: 0,
             idleTimeoutMillis: 30000
         }

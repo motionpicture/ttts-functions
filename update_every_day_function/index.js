@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const moment = require("moment");
 const configs = require("../configs/app.js");
+const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
 require("../models/reservation.js");
@@ -40,7 +41,7 @@ module.exports = (context, myTimer) => __awaiter(this, void 0, void 0, function*
         }));
     }
     catch (error) {
-        context.log(error);
+        Logs.writeErrorLog(error.stack);
     }
     context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
 });

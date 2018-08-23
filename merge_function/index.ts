@@ -4,6 +4,7 @@ import * as request from 'request';
 import * as moment from 'moment';
 import * as configs from '../configs/app.js';
 
+const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
 require("../models/reservation.js");
@@ -28,24 +29,37 @@ if (process.env.NODE_ENV !== 'production') {
 //if run on local use export async function run (context, myBlob) {
 module.exports = async (context, myBlob) => {
 //export async function run (context, myBlob) {
-    context.log('START: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
+
+    context.funcId = context.executionContext.invocationId;
+    context.log(`${context.funcId}: ${context.bindingData.name}`);
+
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
 
         const rows = await readCsv(context.bindingData.uri);
-        const entities = await posRepo.getPosSales(rows);
-        const reservations = await getCheckins(entities);
 
-        await posRepo.setCheckins(entities, reservations).then(async (docs) => {
-            await posRepo.saveToPosSalesTmp(docs, context).then(async () => {
-                await moveListFileWorking(context.bindingData);
+        const entities  = await posRepo.getPosSales(rows);
+        const errors    = await posRepo.validation(entities, context);
+        context.log(`${context.funcId}: Number of lines appears error is ${errors.length}`);
+
+        if (errors.length == 0) {
+            
+            const reservations = await getCheckins(entities);
+            await posRepo.setCheckins(entities, reservations).then(async (docs) => {
+                
+                await posRepo.saveToPosSales(docs, context).then(async () => {
+                    if (await posRepo.mergeFunc(context)) {
+                        await moveListFileWorking(context.bindingData);
+                    };
+                });
             });
-        });
+        } else {
+            Logs.writeErrorLog(context.funcId + '\\' + errors.join("\\"));
+        }
+        
     } catch (error) {
-        context.log(error);
+        Logs.writeErrorLog(context.funcId + '\\' + error.stack);
     }
-    context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
-    mongoose.connection.close();
 }
 
 /**

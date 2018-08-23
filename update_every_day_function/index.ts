@@ -2,6 +2,7 @@ import * as request from 'request';
 import * as moment from 'moment';
 import * as configs from '../configs/app.js';
 
+const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
 require("../models/reservation.js");
@@ -41,7 +42,7 @@ module.exports = async (context, myTimer) => {
             }
         });
     } catch (error) {
-        context.log(error);
+        Logs.writeErrorLog(error.stack);
     }
 
     context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));

@@ -11,8 +11,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const csv = require("csvtojson");
 const storage = require("azure-storage");
 const request = require("request");
-const moment = require("moment");
 const configs = require("../configs/app.js");
+const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
 require("../models/reservation.js");
@@ -35,23 +35,33 @@ if (process.env.NODE_ENV !== 'production') {
 //if run on local use export async function run (context, myBlob) {
 module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* () {
     //export async function run (context, myBlob) {
-    context.log('START: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
+    context.funcId = context.executionContext.invocationId;
+    context.log(`${context.funcId}: ${context.bindingData.name}`);
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
         const rows = yield readCsv(context.bindingData.uri);
         const entities = yield posRepo.getPosSales(rows);
-        const reservations = yield getCheckins(entities);
-        yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
-            yield posRepo.saveToPosSalesTmp(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
-                yield moveListFileWorking(context.bindingData);
+        const errors = yield posRepo.validation(entities, context);
+        context.log(`${context.funcId}: Number of lines appears error is ${errors.length}`);
+        if (errors.length == 0) {
+            const reservations = yield getCheckins(entities);
+            yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
+                yield posRepo.saveToPosSales(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
+                    if (yield posRepo.mergeFunc(context)) {
+                        yield moveListFileWorking(context.bindingData);
+                    }
+                    ;
+                }));
             }));
-        }));
+        }
+        else {
+            Logs.writeErrorLog(context.funcId + '\\' + errors.join("\\"));
+        }
     }
     catch (error) {
-        context.log(error);
+        Logs.writeErrorLog(context.funcId + '\\' + error.stack);
     }
-    context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
-    mongoose.connection.close();
+    //mongoose.connection.close();
 });
 /**
  * Get data checkins from mongoose db

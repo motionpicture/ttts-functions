@@ -55,7 +55,7 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
             }));
         }
         else {
-            Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + errors.join("\n"));
+            Logs.writeErrorLog(errors.join("\n"));
         }
     }
     catch (error) {

@@ -31,7 +31,7 @@ const posSalesRepository = {
                 INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
                 WHERE c.object_id = OBJECT_ID('pos_sales')`;
         }).then(result => {
-            context.log(`${context.funcId}: Connected sql server get table information.`);
+            context.log(`${context.bindingData.name}ファイル: Connected sql server get table information.`);
 
             result.recordset.forEach(doc => {
                 let prop: IAttribute = {type: doc.type, length: doc.length};
@@ -59,7 +59,7 @@ const posSalesRepository = {
                 attrs[doc.name] = prop;
             });
         }).catch(err => {
-            context.log(`${context.funcId}: Connected sql server error.`);
+            context.log(`${context.bindingData.name}ファイル: Connected sql server error.`);
         })
 
         return attrs;
@@ -94,7 +94,7 @@ const posSalesRepository = {
                 }
             }
             if (errorsInRow.length > 0)
-                errors.push(`${i + 1}行目の${errorsInRow.join('、')}値は正しくないです。`);
+                errors.push(`${context.bindingData.name}ファイルの${i + 1}行目の${errorsInRow.join('、')}値は正しくないです。`);
         }
         
         return errors;
@@ -167,7 +167,7 @@ const posSalesRepository = {
 
         await new sql.ConnectionPool(configs.mssql).connect().then(async pool => {
 
-            context.log(`${context.funcId}: Start Transaction.`);
+            context.log(`${context.bindingData.name}: Start Transaction.`);
             const transaction = new sql.Transaction(pool);
             await transaction.begin();
 
@@ -175,17 +175,17 @@ const posSalesRepository = {
                 for (let i = 0; i < parts.length; i++) {
                     const request = new sql.Request(transaction);
                     await request.query(`INSERT INTO pos_sales_tmp (${header4PosSalesTmp.join(',')}) VALUES ${parts[i].join(', ')};`);
-                    context.log(`${context.funcId}: ${i + 1}分追加しました。`);
+                    context.log(`${context.bindingData.name}ファイル: ${i + 1}分追加しました。`);
                 }
                 
                 transaction.commit();
                 return true;   
             } catch (err) {
                 transaction.rollback();
-                Logs.writeErrorLog(context.funcId + '\\' + err.stack);
+                Logs.writeErrorLog(context.bindingData.name + '\\' + err.stack);
             }
         }).then(result => {
-            context.log(`${context.funcId}: インサートしました。`);
+            context.log(`${context.bindingData.name}ファイル: インサートしました。`);
         });
     },
 
@@ -221,11 +221,11 @@ const posSalesRepository = {
 
             await new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);
         }).then(result => {
-            context.log(`${context.funcId}: マージしました。`);
+            context.log(`${context.bindingData.name}ファイル: マージしました。`);
             return true;
         }).catch(err => {
-            context.log(`${context.funcId}: マージ分はエラーが出ています。`);
-            Logs.writeErrorLog(context.funcId + '\\' + err.stack);
+            context.log(`${context.bindingData.name}ファイル: マージ分はエラーが出ています。`);
+            Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + err.stack);
             return false;
         });
         return true;

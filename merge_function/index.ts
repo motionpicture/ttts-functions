@@ -31,7 +31,7 @@ module.exports = async (context, myBlob) => {
 //export async function run (context, myBlob) {
 
     context.funcId = context.executionContext.invocationId;
-    context.log(`${context.funcId}: ${context.bindingData.name}`);
+    context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
 
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
@@ -40,7 +40,7 @@ module.exports = async (context, myBlob) => {
 
         const entities  = await posRepo.getPosSales(rows);
         const errors    = await posRepo.validation(entities, context);
-        context.log(`${context.funcId}: Number of lines appears error is ${errors.length}`);
+        context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
 
         if (errors.length == 0) {
             
@@ -54,11 +54,11 @@ module.exports = async (context, myBlob) => {
                 });
             });
         } else {
-            Logs.writeErrorLog(context.funcId + '\\' + errors.join("\\"));
+            Logs.writeErrorLog(errors.join("\n"));
         }
         
     } catch (error) {
-        Logs.writeErrorLog(context.funcId + '\\' + error.stack);
+        Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
 }
 

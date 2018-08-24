@@ -36,13 +36,13 @@ if (process.env.NODE_ENV !== 'production') {
 module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* () {
     //export async function run (context, myBlob) {
     context.funcId = context.executionContext.invocationId;
-    context.log(`${context.funcId}: ${context.bindingData.name}`);
+    context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
         const rows = yield readCsv(context.bindingData.uri);
         const entities = yield posRepo.getPosSales(rows);
         const errors = yield posRepo.validation(entities, context);
-        context.log(`${context.funcId}: Number of lines appears error is ${errors.length}`);
+        context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
         if (errors.length == 0) {
             const reservations = yield getCheckins(entities);
             yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
@@ -55,13 +55,12 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
             }));
         }
         else {
-            Logs.writeErrorLog(context.funcId + '\\' + errors.join("\\"));
+            Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + errors.join("\n"));
         }
     }
     catch (error) {
-        Logs.writeErrorLog(context.funcId + '\\' + error.stack);
+        Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-    //mongoose.connection.close();
 });
 /**
  * Get data checkins from mongoose db

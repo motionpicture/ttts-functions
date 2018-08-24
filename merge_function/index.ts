@@ -49,7 +49,7 @@ module.exports = async (context, myBlob) => {
                 
                 await posRepo.saveToPosSales(docs, context).then(async () => {
                     if (await posRepo.mergeFunc(context)) {
-                        await moveListFileWorking(context.bindingData);
+                        await moveListFileWorking(context);
                     };
                 });
             });
@@ -116,12 +116,12 @@ async function readCsv (filePath: string) {
  * After saving to the sql server, move the file from the working directory to the complete directory, leaving the file name unchanged
  * @param fileReading object contains the file information you are reading 
  */
-async function moveListFileWorking (fileReading) {
-    const oriBlob = 'working/' + fileReading.name;
-    const targetBlob = 'complete/' + fileReading.name;
+async function moveListFileWorking (context) {
+    const oriBlob = 'working/' + context.bindingData.name;
+    const targetBlob = 'complete/' + context.bindingData.name;
     
-    await storage.createBlobService().startCopyBlob(fileReading.uri + '?sasString', configs.containerName, targetBlob, async (error, result, res) => {
-        await storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, async (error, result, res) => {})
+    await storage.createBlobService().startCopyBlob(context.bindingData.uri + '?sasString', process.env.AZURE_BLOB_STORAGE, targetBlob, async (error, result, res) => {
+        await storage.createBlobService().deleteBlobIfExists(process.env.AZURE_BLOB_STORAGE, oriBlob, async (error, result, res) => {})
     });
 }
 

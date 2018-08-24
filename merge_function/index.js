@@ -48,7 +48,7 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
             yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
                 yield posRepo.saveToPosSales(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
                     if (yield posRepo.mergeFunc(context)) {
-                        yield moveListFileWorking(context.bindingData);
+                        yield moveListFileWorking(context);
                     }
                     ;
                 }));
@@ -116,12 +116,12 @@ function readCsv(filePath) {
  * After saving to the sql server, move the file from the working directory to the complete directory, leaving the file name unchanged
  * @param fileReading object contains the file information you are reading
  */
-function moveListFileWorking(fileReading) {
+function moveListFileWorking(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        const oriBlob = 'working/' + fileReading.name;
-        const targetBlob = 'complete/' + fileReading.name;
-        yield storage.createBlobService().startCopyBlob(fileReading.uri + '?sasString', configs.containerName, targetBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
-            yield storage.createBlobService().deleteBlobIfExists(configs.containerName, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () { }));
+        const oriBlob = 'working/' + context.bindingData.name;
+        const targetBlob = 'complete/' + context.bindingData.name;
+        yield storage.createBlobService().startCopyBlob(context.bindingData.uri + '?sasString', process.env.AZURE_BLOB_STORAGE, targetBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
+            yield storage.createBlobService().deleteBlobIfExists(process.env.AZURE_BLOB_STORAGE, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () { }));
         }));
     });
 }

@@ -154,7 +154,7 @@ const posSalesRepository = {
             posSalesTmp['uuid'] = context.funcId;
 
             let props = [];
-            header4PosSalesTmp.forEach( x => props.push(posSalesTmp[x] !== null ? `'${posSalesTmp[x]}'`: `NULL`));
+            header4PosSalesTmp.forEach( x => props.push((posSalesTmp[x] !== null && posSalesTmp[x] !== '') ? `'${posSalesTmp[x]}'`: `NULL`));
             return `(${props.join(',')})`;
         });
 

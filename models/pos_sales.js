@@ -168,6 +168,7 @@ const posSalesRepository = {
      * If not already added, If it exists update
      */
     mergeFunc: (context) => __awaiter(this, void 0, void 0, function* () {
+        const currentTime = moment().format("YYYY-MM-DD HH:mm:ss");
         const commonCols = [
             'store_code', 'pos_no', 'receipt_no', 'no1', 'no2', 'type', 'payment_no', 'performance_id', 'seat_code',
             'performance_type', 'performance_day', 'start_time', 'sales_date', 'section_code', 'plu_code', 'item_name',
@@ -175,20 +176,20 @@ const posSalesRepository = {
             'payment_type3', 'payment_type4', 'payment_type5', 'payment_type6', 'payment_type7', 'payment_type8',
             'customer1', 'customer2', 'entry_flg', 'entry_date'
         ];
+        let mergeCols = [];
+        commonCols.forEach(col => mergeCols.push(`${col} = src.${col}`));
         yield new sql.ConnectionPool(configs.mssql).connect().then((pool) => __awaiter(this, void 0, void 0, function* () {
-            const created_at = moment().format("YYYY-MM-DD HH:mm:ss");
             yield new sql.Request(pool).query(`
                 INSERT pos_sales (${[...commonCols, ...['created_at']].join(',')})  
-                SELECT ${[...commonCols, ...[`'${created_at}'`]].join(',')} 
+                SELECT ${[...commonCols, ...[`'${currentTime}'`]].join(',')} 
                 FROM pos_sales_tmp   
                 WHERE NOT EXISTS (
                     SELECT * FROM pos_sales ps 
                     WHERE ps.payment_no = pos_sales_tmp.payment_no AND ps.seat_code = pos_sales_tmp.seat_code AND ps.performance_day = pos_sales_tmp.performance_day
                 ) AND pos_sales_tmp.uuid = '${context.funcId}';`);
-            const updated_at = moment().format("YYYY-MM-DD HH:mm:ss");
             yield new sql.Request(pool).query(`
                 UPDATE tgt 
-                SET entry_flg = src.entry_flg, entry_date = src.entry_date, updated_at = '${updated_at}'
+                SET ${[...mergeCols, ...[`updated_at = '${currentTime}'`]].join(',')}
                 FROM dbo.pos_sales AS tgt
                 INNER JOIN pos_sales_tmp AS src ON (src.uuid = '${context.funcId}' AND tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`);
             yield new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);

@@ -1,11 +1,11 @@
 {
  "bindings": [
   {
-   "name": "container4bi",
+   "name": "container4aggregate",
    "type": "blobTrigger",
    "direction": "in",
-   "path": "container4bi/working/{name}",
-   "connection": "AzureWebJobsDashboard"
+   "path": "container4aggregate/working/{name}",
+   "connection": "AZURE_STORAGE_CONNECTION_STRING"
   }
  ],
  "disabled": false,

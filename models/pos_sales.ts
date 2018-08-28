@@ -73,7 +73,7 @@ const posSalesRepository = {
             let errorsInRow: string[] = [];
             for (const prop in entities[i]) {
 
-                if (entities[i][prop] == null) continue;
+                if (entities[i][prop] == null || entities[i][prop] == '') continue;
 
                 if (attrs[prop].type == 'number' && !(
                     parseInt(entities[i][prop]) <= attrs[prop].length.max && parseInt(entities[i][prop]) >= attrs[prop].length.min
@@ -194,7 +194,7 @@ const posSalesRepository = {
      */
     mergeFunc: async (context) => {
 
-        const header4PosSales = [
+        const commonCols = [
             'store_code', 'pos_no', 'receipt_no', 'no1', 'no2', 'type', 'payment_no', 'performance_id', 'seat_code', 
             'performance_type', 'performance_day', 'start_time', 'sales_date', 'section_code', 'plu_code', 'item_name', 
             'sales_amount', 'unit_price', 'unit', 'sum_amount', 'payment_type', 'cash', 'payment_type1', 'payment_type2', 
@@ -203,21 +203,22 @@ const posSalesRepository = {
         ];
 
         await new sql.ConnectionPool(configs.mssql).connect().then(async pool => {
-            
+            const created_at = moment().format("YYYY-MM-DD HH:mm:ss");
             await new sql.Request(pool).query(`
-                INSERT pos_sales (${header4PosSales.join(',')})  
-                SELECT ${header4PosSales.join(',')} 
+                INSERT pos_sales (${[...commonCols, ...['created_at']].join(',')})  
+                SELECT ${[...commonCols, ...[`'${created_at}'`]].join(',')} 
                 FROM pos_sales_tmp   
                 WHERE NOT EXISTS (
                     SELECT * FROM pos_sales ps 
                     WHERE ps.payment_no = pos_sales_tmp.payment_no AND ps.seat_code = pos_sales_tmp.seat_code AND ps.performance_day = pos_sales_tmp.performance_day
                 ) AND pos_sales_tmp.uuid = '${context.funcId}';`);
             
+            const updated_at = moment().format("YYYY-MM-DD HH:mm:ss");
             await new sql.Request(pool).query(`
                 UPDATE tgt 
-                SET entry_flg = src.entry_flg, entry_date = src.entry_date 
+                SET entry_flg = src.entry_flg, entry_date = src.entry_date, updated_at = '${updated_at}'
                 FROM dbo.pos_sales AS tgt
-                INNER JOIN pos_sales_tmp AS src ON (tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`);
+                INNER JOIN pos_sales_tmp AS src ON (src.uuid = '${context.funcId}' AND tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`);
 
             await new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);
         }).then(result => {
@@ -269,9 +270,10 @@ const posSalesRepository = {
      * @param context Azure function of variable
      */
     reUpdateCheckins: async (entities, context) => {
+        const updated_at = moment().format("YYYY-MM-DD HH:mm:ss");
         let updateSql = `
             UPDATE tgt
-            SET entry_flg = src.entry_flg, entry_date = src.entry_date
+            SET entry_flg = src.entry_flg, entry_date = src.entry_date, updated_at = '${updated_at}'
             FROM dbo.pos_sales AS tgt
             INNER JOIN (
                 VALUES ${entities.join(',')}

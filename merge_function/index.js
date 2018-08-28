@@ -8,10 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const csv = require("csvtojson");
+const csv = require("csv");
 const storage = require("azure-storage");
-const request = require("request");
+const moment = require("moment");
 const configs = require("../configs/app.js");
+const iconv = require("iconv-lite");
+const fs = require("fs");
 const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
@@ -23,11 +25,14 @@ if (process.env.NODE_ENV !== 'production') {
     /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/tmp/son',
-            name: 'son'
+            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/working/1son111-111.csv',
+            name: '1son111-111.csv'
         },
         log: (text) => {
             console.log(text);
+        },
+        executionContext: {
+            invocationId: 686868
         }
     }, null);
     */
@@ -39,7 +44,7 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
     context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
-        const rows = yield readCsv(context.bindingData.uri);
+        const rows = yield readCsv(context);
         const entities = yield posRepo.getPosSales(rows);
         const errors = yield posRepo.validation(entities, context);
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
@@ -59,8 +64,10 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
         }
     }
     catch (error) {
+        context.log(error);
         Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
+    mongoose.connection.close();
 });
 /**
  * Get data checkins from mongoose db
@@ -102,13 +109,31 @@ function createConds4Checkins(entities) {
  * @param filePath string Relative path to csv file
  * @returns Array
  */
-function readCsv(filePath) {
+function readCsv(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        const fileInfo = request.get(filePath);
-        return yield csv({ noheader: true, output: "csv" }).fromStream(fileInfo).then(docs => {
-            if (configs.csv.csv_101.useHeader)
-                docs.shift();
-            return docs;
+        const docs = [];
+        const localFile = `${require('path').dirname(__dirname)}\\${moment().format("YYYYMMDD")}-${context.bindingData.name}`;
+        const targetBlob = 'working/' + context.bindingData.name;
+        return yield new Promise((resolve, reject) => {
+            storage.createBlobService().getBlobToStream(process.env.AZURE_BLOB_STORAGE, targetBlob, fs.createWriteStream(localFile), err => {
+                if (err) {
+                    return reject(err);
+                }
+                let stream = fs.createWriteStream(localFile, { flags: 'a' });
+                const readableStream = fs.createReadStream(localFile)
+                    .pipe(iconv.decodeStream('SJIS'))
+                    .pipe(iconv.encodeStream('UTF-8'))
+                    .pipe(csv.parse());
+                readableStream.on('data', (record) => {
+                    docs.push(record);
+                });
+                readableStream.on('end', () => {
+                    if (configs.csv.csv_101.useHeader)
+                        docs.shift();
+                    fs.unlink(localFile, () => { });
+                    return resolve(docs);
+                });
+            });
         });
     });
 }

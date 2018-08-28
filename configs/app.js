@@ -30,6 +30,7 @@ const configs = {
             useHeader: true
         }
     },
+    containerName: process.env.AZURE_BLOB_STORAGE,
     maxRecordExec: 500
 };
 

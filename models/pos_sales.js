@@ -21,7 +21,8 @@ const posSalesRepository = {
      */
     getTblInfo: (context) => __awaiter(this, void 0, void 0, function* () {
         let attrs = {};
-        yield new sql.ConnectionPool(configs.mssql).connect().then(pool => {
+        const server = new sql.ConnectionPool(configs.mssql);
+        yield server.connect().then(pool => {
             return pool.query `
                 SELECT c.name AS name, t.Name AS type, c.max_length AS length
                 FROM sys.columns c
@@ -57,6 +58,7 @@ const posSalesRepository = {
         }).catch(err => {
             context.log(`${context.bindingData.name}ファイル: Connected sql server error.`);
         });
+        server.close();
         return attrs;
     }),
     validation: (entities, context) => __awaiter(this, void 0, void 0, function* () {
@@ -107,10 +109,17 @@ const posSalesRepository = {
      */
     setCheckins: (entities, reservations) => __awaiter(this, void 0, void 0, function* () {
         return entities.map(entity => {
-            const prop = entity.payment_no + entity.seat_code + entity.performance_day;
+            let performance_day = null;
+            if (entity.performance_day) {
+                performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
+            }
+            const prop = entity.payment_no + entity.seat_code + performance_day;
             if (reservations[prop] !== undefined) {
                 entity.entry_flg = reservations[prop].entry_flg;
                 entity.entry_date = reservations[prop].entry_date;
+            }
+            else {
+                entity.entry_flg = '予約非連携';
             }
             return entity;
         });
@@ -143,7 +152,8 @@ const posSalesRepository = {
             else
                 parts.push([entities[x]]);
         }
-        yield new sql.ConnectionPool(configs.mssql).connect().then((pool) => __awaiter(this, void 0, void 0, function* () {
+        const server = new sql.ConnectionPool(configs.mssql);
+        yield server.connect().then((pool) => __awaiter(this, void 0, void 0, function* () {
             context.log(`${context.bindingData.name}: Start Transaction.`);
             const transaction = new sql.Transaction(pool);
             yield transaction.begin();
@@ -153,21 +163,22 @@ const posSalesRepository = {
                     yield request.query(`INSERT INTO pos_sales_tmp (${header4PosSalesTmp.join(',')}) VALUES ${parts[i].join(', ')};`);
                     context.log(`${context.bindingData.name}ファイル: ${i + 1}分追加しました。`);
                 }
-                transaction.commit();
-                return true;
+                yield transaction.commit();
             }
             catch (err) {
-                transaction.rollback();
+                yield transaction.rollback();
                 Logs.writeErrorLog(context.bindingData.name + '\\' + err.stack);
             }
         })).then(result => {
             context.log(`${context.bindingData.name}ファイル: インサートしました。`);
         });
+        server.close();
     }),
     /**
      * If not already added, If it exists update
      */
     mergeFunc: (context) => __awaiter(this, void 0, void 0, function* () {
+        let mergeSuccess = false;
         const currentTime = moment().format("YYYY-MM-DD HH:mm:ss");
         const commonCols = [
             'store_code', 'pos_no', 'receipt_no', 'no1', 'no2', 'type', 'payment_no', 'performance_id', 'seat_code',
@@ -178,30 +189,43 @@ const posSalesRepository = {
         ];
         let mergeCols = [];
         commonCols.forEach(col => mergeCols.push(`${col} = src.${col}`));
-        yield new sql.ConnectionPool(configs.mssql).connect().then((pool) => __awaiter(this, void 0, void 0, function* () {
+        const server = new sql.ConnectionPool(configs.mssql);
+        yield server.connect().then((pool) => __awaiter(this, void 0, void 0, function* () {
             yield new sql.Request(pool).query(`
                 INSERT pos_sales (${[...commonCols, ...['created_at']].join(',')})  
                 SELECT ${[...commonCols, ...[`'${currentTime}'`]].join(',')} 
                 FROM pos_sales_tmp   
                 WHERE NOT EXISTS (
                     SELECT * FROM pos_sales ps 
-                    WHERE ps.payment_no = pos_sales_tmp.payment_no AND ps.seat_code = pos_sales_tmp.seat_code AND ps.performance_day = pos_sales_tmp.performance_day
+                    WHERE IsNull(ps.payment_no, '') = IsNull(pos_sales_tmp.payment_no, '') 
+                        AND IsNull(ps.seat_code, '') = IsNull(pos_sales_tmp.seat_code, '') 
+                        AND IsNull(ps.performance_day, '') = IsNull(pos_sales_tmp.performance_day, '') 
+                        AND IsNull(ps.receipt_no, '') = IsNull(pos_sales_tmp.receipt_no, '') 
+                        AND IsNull(ps.no1, '') = IsNull(pos_sales_tmp.no1, '')
                 ) AND pos_sales_tmp.uuid = '${context.funcId}';`);
             yield new sql.Request(pool).query(`
                 UPDATE tgt 
                 SET ${[...mergeCols, ...[`updated_at = '${currentTime}'`]].join(',')}
                 FROM dbo.pos_sales AS tgt
-                INNER JOIN pos_sales_tmp AS src ON (src.uuid = '${context.funcId}' AND tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`);
+                INNER JOIN pos_sales_tmp AS src ON (
+                    src.uuid = '${context.funcId}' 
+                    AND IsNull(tgt.payment_no, '') = IsNull(src.payment_no, '')
+                    AND IsNull(tgt.seat_code, '') = IsNull(src.seat_code, '') 
+                    AND IsNull(tgt.performance_day, '') = IsNull(src.performance_day, '')
+                    AND IsNull(tgt.receipt_no, '') = IsNull(src.receipt_no, '')
+                    AND IsNull(tgt.no1, '') = IsNull(src.no1, '')
+                );`);
             yield new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);
         })).then(result => {
+            mergeSuccess = true;
             context.log(`${context.bindingData.name}ファイル: マージしました。`);
-            return true;
         }).catch(err => {
+            mergeSuccess = false;
             context.log(`${context.bindingData.name}ファイル: マージ分はエラーが出ています。`);
             Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + err.stack);
-            return false;
         });
-        return true;
+        server.close();
+        return mergeSuccess;
     }),
     /**
      * connect into SQL server to get datas had performance_day in period supplied on link

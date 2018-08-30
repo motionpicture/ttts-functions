@@ -19,8 +19,8 @@ if (process.env.NODE_ENV !== 'production') {
     /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/working/1son111-111.csv',
-            name: '1son111-111.csv'
+            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/20180807113408.csv',
+            name: '20180807113408.csv'
         },
         log: (text) => {
             console.log(text);
@@ -48,32 +48,30 @@ module.exports = async (context, myBlob) => {
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
 
         if (errors.length == 0) {
-            const reservations = await getCheckins(entities);
+            const reservations = await getCheckins(entities, context);
             await posRepo.setCheckins(entities, reservations).then(async (docs) => {
                 
                 await posRepo.saveToPosSales(docs, context).then(async () => {
-                    if (await posRepo.mergeFunc(context)) {
-                        await moveListFileWorking(context);
-                    };
+                    await posRepo.mergeFunc(context);
+                    await moveListFileWorking(context);
                 });
             });
         } else {
             Logs.writeErrorLog(errors.join("\n"));
         }
+        mongoose.connection.close();
     } catch (error) {
         context.log(error);
         Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-    mongoose.connection.close();
 }
 
 /**
  * Get data checkins from mongoose db
  * @param entities [PosSalesEntity, PosSalesEntity, ...]
  */
-async function getCheckins (entities) {
+async function getCheckins (entities, context) {
     const conds = createConds4Checkins(entities);
-
     return await mongoose.model('Reservation').find({ $or: conds }, {
         checkins: true, payment_no: true, seat_code: true, performance_day: true
     }).then(docs => { 
@@ -95,10 +93,15 @@ async function getCheckins (entities) {
  */
 function createConds4Checkins(entities: any) {
     return entities.map(entity => {
+        let performance_day = null;
+        if (entity.performance_day) {
+            performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
+        }
+        
         return { $and: [
                 { payment_no: entity.payment_no },
                 { seat_code: entity.seat_code },
-                { performance_day: entity.performance_day }]
+                { performance_day: performance_day }]
         };
     });
 }
@@ -111,7 +114,7 @@ function createConds4Checkins(entities: any) {
 async function readCsv (context: any) {
     
     const docs = [];
-    const localFile = `${require('path').dirname(__dirname)}\\${moment().format("YYYYMMDD")}-${context.bindingData.name}`;
+    const localFile = `${require('path').dirname(__dirname)}/${moment().format("YYYYMMDD")}-${context.bindingData.name}`;
     const targetBlob = 'working/' + context.bindingData.name;
 
     return await new Promise((resolve ,reject) => {

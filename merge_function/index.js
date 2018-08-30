@@ -25,8 +25,8 @@ if (process.env.NODE_ENV !== 'production') {
     /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4bi/working/1son111-111.csv',
-            name: '1son111-111.csv'
+            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/20180807113408.csv',
+            name: '20180807113408.csv'
         },
         log: (text) => {
             console.log(text);
@@ -49,31 +49,29 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
         const errors = yield posRepo.validation(entities, context);
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
         if (errors.length == 0) {
-            const reservations = yield getCheckins(entities);
+            const reservations = yield getCheckins(entities, context);
             yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
                 yield posRepo.saveToPosSales(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
-                    if (yield posRepo.mergeFunc(context)) {
-                        yield moveListFileWorking(context);
-                    }
-                    ;
+                    yield posRepo.mergeFunc(context);
+                    yield moveListFileWorking(context);
                 }));
             }));
         }
         else {
             Logs.writeErrorLog(errors.join("\n"));
         }
+        mongoose.connection.close();
     }
     catch (error) {
         context.log(error);
         Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-    mongoose.connection.close();
 });
 /**
  * Get data checkins from mongoose db
  * @param entities [PosSalesEntity, PosSalesEntity, ...]
  */
-function getCheckins(entities) {
+function getCheckins(entities, context) {
     return __awaiter(this, void 0, void 0, function* () {
         const conds = createConds4Checkins(entities);
         return yield mongoose.model('Reservation').find({ $or: conds }, {
@@ -96,10 +94,14 @@ function getCheckins(entities) {
  */
 function createConds4Checkins(entities) {
     return entities.map(entity => {
+        let performance_day = null;
+        if (entity.performance_day) {
+            performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
+        }
         return { $and: [
                 { payment_no: entity.payment_no },
                 { seat_code: entity.seat_code },
-                { performance_day: entity.performance_day }
+                { performance_day: performance_day }
             ]
         };
     });
@@ -112,7 +114,7 @@ function createConds4Checkins(entities) {
 function readCsv(context) {
     return __awaiter(this, void 0, void 0, function* () {
         const docs = [];
-        const localFile = `${require('path').dirname(__dirname)}\\${moment().format("YYYYMMDD")}-${context.bindingData.name}`;
+        const localFile = `${require('path').dirname(__dirname)}/${moment().format("YYYYMMDD")}-${context.bindingData.name}`;
         const targetBlob = 'working/' + context.bindingData.name;
         return yield new Promise((resolve, reject) => {
             storage.createBlobService().getBlobToStream(process.env.AZURE_BLOB_STORAGE, targetBlob, fs.createWriteStream(localFile), err => {

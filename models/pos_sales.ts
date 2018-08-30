@@ -137,8 +137,6 @@ const posSalesRepository = {
             if (reservations[prop] !== undefined) {
                 entity.entry_flg = reservations[prop].entry_flg;
                 entity.entry_date = reservations[prop].entry_date;
-            } else {
-                entity.entry_flg = '予約非連携';
             }
             return entity;
         });

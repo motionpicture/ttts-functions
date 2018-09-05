@@ -34,7 +34,7 @@ export default class {
                     const lastTime  = parseFloat(logInfo[logInfo.length - 1][2]);
                     const nowTime   = moment.duration(moment(moment().toISOString()).diff(moment(logInfo[5][1]))).asSeconds();
 
-                    if (lastTime / maxTime >= 0.8 || nowTime >= maxTime) {
+                    if (lastTime / maxTime >= 0.8 && nowTime >= maxTime) {
                         Logs.writeErrorLog(await this.showTimeoutAlert(fileName));
                         canRun = false;
                     }

@@ -100,6 +100,7 @@ const posSalesRepository = {
                 errors.push(`${context.bindingData.name}ファイルの${i + 1}行目の${errorsInRow.join('、')}値は正しくないです。`);
         }
         
+        await context.processInfo.addTimeProcess(context);
         return errors;
     },
 
@@ -185,9 +186,11 @@ const posSalesRepository = {
                     const request = new sql.Request(transaction);
                     await request.query(`INSERT INTO pos_sales_tmp (${header4PosSalesTmp.join(',')}) VALUES ${parts[i].join(', ')};`);
                     context.log(`${context.bindingData.name}ファイル: ${i + 1}分追加しました。`);
+                    await context.processInfo.addTimeProcess(context);
                 }
                 
-                await transaction.commit();  
+                await transaction.commit(); 
+                await context.processInfo.addTimeProcess(context);
             } catch (err) {
                 await transaction.rollback();
                 Logs.writeErrorLog(context.bindingData.name + '\\' + err.stack);
@@ -231,7 +234,8 @@ const posSalesRepository = {
                         AND IsNull(ps.receipt_no, '') = IsNull(pos_sales_tmp.receipt_no, '') 
                         AND IsNull(ps.no1, '') = IsNull(pos_sales_tmp.no1, '')
                 ) AND pos_sales_tmp.uuid = '${context.funcId}';`);
-            
+            await context.processInfo.addTimeProcess(context);
+
             await new sql.Request(pool).query(`
                 UPDATE tgt 
                 SET ${[...mergeCols, ...[`updated_at = '${currentTime}'`]].join(',')}
@@ -244,9 +248,11 @@ const posSalesRepository = {
                     AND IsNull(tgt.receipt_no, '') = IsNull(src.receipt_no, '')
                     AND IsNull(tgt.no1, '') = IsNull(src.no1, '')
                 );`);
+            await context.processInfo.addTimeProcess(context);
 
             await new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);
-        }).then(result => {
+            await context.processInfo.addTimeProcess(context);
+        }).then(async result => {
             mergeSuccess = true;
             context.log(`${context.bindingData.name}ファイル: マージしました。`);
         }).catch(err => {

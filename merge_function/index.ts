@@ -6,6 +6,7 @@ import * as configs from '../configs/app.js';
 import * as iconv from 'iconv-lite';
 import * as fs from 'fs';
 import * as https from 'https';
+import processChk from '../libs/processInfomationHelper';
 
 const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
@@ -20,7 +21,14 @@ if (process.env.NODE_ENV !== 'production') {
     run({
         bindingData: {
             uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/20180807113408.csv',
-            name: '20180807113408.csv'
+            name: '20180807113408.csv',
+            properties: {
+                length: 338144
+            },
+            sys: {
+                methodName: "merge_function",
+                utcNow: moment().toISOString()
+            }
         },
         log: (text) => {
             console.log(text);
@@ -36,21 +44,27 @@ if (process.env.NODE_ENV !== 'production') {
 module.exports = async (context, myBlob) => {
 //export async function run (context, myBlob) {
 
+    context.processInfo = new processChk();
     context.funcId = context.executionContext.invocationId;
+    if (await context.processInfo.checkProcess(context) == false) {
+        return true;
+    }
+
     context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
+    context.processInfo.createCsv(context);
 
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
-
         const rows: any = await readCsv(context);
         const entities  = await posRepo.getPosSales(rows);
-        const errors    = await posRepo.validation(entities, context);
+
+        const errors = await posRepo.validation(entities, context);
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
 
         if (errors.length == 0) {
             const reservations = await getCheckins(entities, context);
             await posRepo.setCheckins(entities, reservations).then(async (docs) => {
-                
+
                 await posRepo.saveToPosSales(docs, context).then(async () => {
                     await posRepo.mergeFunc(context);
                     await moveListFileWorking(context);
@@ -64,6 +78,7 @@ module.exports = async (context, myBlob) => {
         context.log(error);
         Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
+    context.processInfo.removeCsv();
 }
 
 /**

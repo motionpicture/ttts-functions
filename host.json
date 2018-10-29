@@ -1,1 +1,16 @@
-{}
+{
+    "functionTimeout": "00:10:00",
+    "logger": {
+        "categoryFilter": {
+            "defaultLevel": "Information",
+            "categoryLevels": {
+                "Host": "Error",
+                "Function": "Error",
+                "Host.Aggregator": "Information"
+            }
+        }
+    },
+    "queues": {
+        "maxDequeueCount": 5
+    }
+}

@@ -1,0 +1,15 @@
+{
+ "bindings": [
+  {
+   "name": "myTimer",
+   "type": "timerTrigger",
+   "direction": "in",
+   "schedule": "0 59 9 * * *"
+  }
+ ],
+ "disabled": false,
+ "_originalEntryPoint": false,
+ "_originalScriptFile": "index.js",
+ "scriptFile": "../.funcpack/index.js",
+ "entryPoint": "update_every_day_function"
+}

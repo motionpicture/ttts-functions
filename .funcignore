@@ -1,0 +1,10 @@
+node_modules/
+.env
+.funcignore
+.gitignore
+.npmrc
+CHANGELOG.md 
+package-lock.json
+package.json
+README.md
+tsconfig.json

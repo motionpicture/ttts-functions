@@ -33,10 +33,14 @@ function sendMessage(message) {
 module.exports = (context, req) => __awaiter(this, void 0, void 0, function* () {
     const tableService = storage.createTableService();
     const entGen = storage.TableUtilities.entityGenerator;
-    const query = new storage.TableQuery()
-        .where('ErrorDetails != ?', '')
-        .and('EndTime >= ?', new Date(moment(moment().subtract(1, 'days')).toISOString()));
     const tableName = `AzureWebJobsHostLogs${moment(moment().toISOString()).format('YYYYMM')}`;
+    const checkTableExists = () => __awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve, rejects) => {
+            tableService.createTableIfNotExists(tableName, function (error, result, response) {
+                resolve(result);
+            });
+        });
+    });
     //bolbにテーブルログの情報を取得
     const getErrors = () => __awaiter(this, void 0, void 0, function* () {
         return new Promise((resolve, reject) => {
@@ -59,6 +63,12 @@ module.exports = (context, req) => __awaiter(this, void 0, void 0, function* () 
             });
         });
     });
+    const checkTbl = yield checkTableExists();
+    if (checkTbl.isSuccessful === false)
+        return false;
+    const query = new storage.TableQuery()
+        .where('ErrorDetails != ?', '')
+        .and('EndTime >= ?', new Date(moment(moment().subtract(1, 'days')).toISOString()));
     const events = yield getErrors();
     if (events !== undefined) {
         for (let x in events) {

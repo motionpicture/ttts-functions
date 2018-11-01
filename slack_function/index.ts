@@ -26,13 +26,18 @@ async function sendMessage (message) {
 }
 
 module.exports = async (context, req) => {
-    
+
     const tableService = storage.createTableService();
     const entGen = storage.TableUtilities.entityGenerator;
-    const query = new storage.TableQuery()
-        .where('ErrorDetails != ?', '')
-        .and('EndTime >= ?', new Date(moment(moment().subtract(1, 'days')).toISOString()));
     const tableName = `AzureWebJobsHostLogs${moment(moment().toISOString()).format('YYYYMM')}`;
+    
+    const checkTableExists: any = async () => {
+        return new Promise((resolve, rejects) => {
+            tableService.createTableIfNotExists(tableName, function(error, result, response) {
+                resolve(result);
+            });
+        });
+    }
 
     //bolbにテーブルログの情報を取得
     const getErrors: any = async () => {
@@ -53,6 +58,13 @@ module.exports = async (context, req) => {
             });
         });
     }
+
+    const checkTbl = await checkTableExists();
+    if (checkTbl.isSuccessful === false) return false;
+
+    const query = new storage.TableQuery()
+        .where('ErrorDetails != ?', '')
+        .and('EndTime >= ?', new Date(moment(moment().subtract(1, 'days')).toISOString()));
 
     const events = await getErrors();
     if (events !== undefined) {

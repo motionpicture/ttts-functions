@@ -14,7 +14,6 @@ const moment = require("moment");
 const configs = require("../configs/app.js");
 const iconv = require("iconv-lite");
 const fs = require("fs");
-const processInfomationHelper_1 = require("../libs/processInfomationHelper");
 const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
 const mongoose = require("mongoose");
@@ -26,10 +25,10 @@ if (process.env.NODE_ENV !== 'production') {
     /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/20180807113408.csv',
-            name: '20180807113408.csv',
+            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/son_test_5.csv',
+            name: 'son_test_5.csv',
             properties: {
-                length: 338144
+                length: 330000
             },
             sys: {
                 methodName: "merge_function",
@@ -37,7 +36,7 @@ if (process.env.NODE_ENV !== 'production') {
             }
         },
         log: (text) => {
-            console.log(text);
+            //console.log(text);
         },
         executionContext: {
             invocationId: 686868
@@ -48,13 +47,8 @@ if (process.env.NODE_ENV !== 'production') {
 //if run on local use export async function run (context, myBlob) {
 module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* () {
     //export async function run (context, myBlob) {
-    context.processInfo = new processInfomationHelper_1.default();
     context.funcId = context.executionContext.invocationId;
-    if ((yield context.processInfo.checkProcess(context)) == false) {
-        return true;
-    }
-    context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
-    context.processInfo.createCsv(context);
+    context.log(`ファイル: ${context.funcId}`);
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
         const rows = yield readCsv(context);
@@ -71,15 +65,14 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
             }));
         }
         else {
-            Logs.writeErrorLog(errors.join("\n"));
+            Logs.writeErrorLog(context, errors.join("\n"));
         }
         mongoose.connection.close();
     }
     catch (error) {
         context.log(error);
-        Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
+        Logs.writeErrorLog(context, `${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-    context.processInfo.removeCsv();
 });
 /**
  * Get data checkins from mongoose db

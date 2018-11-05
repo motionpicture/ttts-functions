@@ -4,6 +4,10 @@ const configs = {
         password: process.env.MSSQL_PASSWORD,
         server: process.env.MSSQL_SERVER,
         database: process.env.MSSQL_DATABASE,
+        // user: "aggregationAdmin",
+        // password: "TTTS!admin",
+        // server: "ttts-data-aggregation-development-sqlserver.database.windows.net",
+        // database: "ttts-data-aggregation-development-sqldatabase",
         connectionTimeout: 600000,
         requestTimeout: 600000,
         options: {
@@ -31,6 +35,7 @@ const configs = {
         }
     },
     containerName: process.env.AZURE_BLOB_STORAGE,
+    // containerName: "container4aggregate",
     maxRecordExec: 500
 };
 

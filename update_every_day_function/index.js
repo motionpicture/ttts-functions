@@ -41,7 +41,7 @@ module.exports = (context, myTimer) => __awaiter(this, void 0, void 0, function*
         }));
     }
     catch (error) {
-        Logs.writeErrorLog(error.stack);
+        Logs.writeErrorLog(context, error.stack);
     }
     context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));
 });

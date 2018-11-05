@@ -6,7 +6,7 @@ import * as configs from '../configs/app.js';
 import * as iconv from 'iconv-lite';
 import * as fs from 'fs';
 import * as https from 'https';
-import processChk from '../libs/processInfomationHelper';
+import * as slackFunc from 'request';
 
 const Logs = require("../libs/logHelper");
 const posRepo = require("../models/pos_sales");
@@ -20,10 +20,10 @@ if (process.env.NODE_ENV !== 'production') {
     /*
     run({
         bindingData: {
-            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/20180807113408.csv',
-            name: '20180807113408.csv',
+            uri: 'https://tttsstorage.blob.core.windows.net/container4aggregate/working/son_test_5.csv',
+            name: 'son_test_5.csv',
             properties: {
-                length: 338144
+                length: 330000
             },
             sys: {
                 methodName: "merge_function",
@@ -31,7 +31,7 @@ if (process.env.NODE_ENV !== 'production') {
             }
         },
         log: (text) => {
-            console.log(text);
+            //console.log(text);
         },
         executionContext: {
             invocationId: 686868
@@ -44,14 +44,8 @@ if (process.env.NODE_ENV !== 'production') {
 module.exports = async (context, myBlob) => {
 //export async function run (context, myBlob) {
 
-    context.processInfo = new processChk();
     context.funcId = context.executionContext.invocationId;
-    if (await context.processInfo.checkProcess(context) == false) {
-        return true;
-    }
-
-    context.log(`${context.funcId}ファイル: ${context.bindingData.name}`);
-    context.processInfo.createCsv(context);
+    context.log(`ファイル: ${context.funcId}`);
 
     try {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
@@ -64,21 +58,20 @@ module.exports = async (context, myBlob) => {
         if (errors.length == 0) {
             const reservations = await getCheckins(entities, context);
             await posRepo.setCheckins(entities, reservations).then(async (docs) => {
-
+                
                 await posRepo.saveToPosSales(docs, context).then(async () => {
                     await posRepo.mergeFunc(context);
                     await moveListFileWorking(context);
                 });
             });
         } else {
-            Logs.writeErrorLog(errors.join("\n"));
+            Logs.writeErrorLog(context, errors.join("\n"));
         }
         mongoose.connection.close();
     } catch (error) {
         context.log(error);
-        Logs.writeErrorLog(`${context.bindingData.name}ファイル` + "\n" + error.stack);
+        Logs.writeErrorLog(context, `${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-    context.processInfo.removeCsv();
 }
 
 /**

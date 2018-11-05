@@ -1,15 +1,10 @@
 {
  "bindings": [
   {
-   "authLevel": "function",
-   "type": "httpTrigger",
+   "name": "myTimer",
+   "type": "timerTrigger",
    "direction": "in",
-   "name": "req"
-  },
-  {
-   "type": "http",
-   "direction": "out",
-   "name": "res"
+   "schedule": "0 */5 * * * *"
   }
  ],
  "disabled": false,

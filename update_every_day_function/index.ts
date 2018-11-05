@@ -42,7 +42,7 @@ module.exports = async (context, myTimer) => {
             }
         });
     } catch (error) {
-        Logs.writeErrorLog(error.stack);
+        Logs.writeErrorLog(context, error.stack);
     }
 
     context.log('END: ' + moment().format('YYYY-MM-DD HH:mm:ss'));

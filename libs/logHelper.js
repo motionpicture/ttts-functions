@@ -12,7 +12,6 @@ const fs = require("fs");
 const moment = require("moment");
 const storage = require("azure-storage");
 const configs = require("../configs/app.js");
-const slackFunc = require("request");
 //Logファイルを書く
 const writeLog = (type, text) => __awaiter(this, void 0, void 0, function* () {
     const localFile = `${__dirname}/../logs/${type}-${moment().format("YYYYMMDD")}.log`;
@@ -38,18 +37,6 @@ const writeLog = (type, text) => __awaiter(this, void 0, void 0, function* () {
             });
         }));
     }));
-    let options = {
-        uri: process.env.SLACK_FUNCTION,
-        headers: { "Content-type": "application/json" },
-        json: { message: text }
-    };
-    yield slackFunc.post(options, (error, response, body) => __awaiter(this, void 0, void 0, function* () { }));
-});
-module.exports.writeInfoLog = (text) => __awaiter(this, void 0, void 0, function* () {
-    writeLog('info', text);
-});
-module.exports.writeErrorLog = (text) => __awaiter(this, void 0, void 0, function* () {
-    writeLog('error', text);
 });
 module.exports.writeInfoLog = (text) => __awaiter(this, void 0, void 0, function* () {
     yield writeLog('info', text);

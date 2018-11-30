@@ -14,6 +14,7 @@ const moment = require("moment");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const configs = require("../configs/app.js");
+const storage = require("azure-storage");
 const Logs = require("../libs/logHelper");
 const posSalesRepository = {
     /**
@@ -216,6 +217,7 @@ const posSalesRepository = {
         })).then((result) => __awaiter(this, void 0, void 0, function* () {
             mergeSuccess = true;
             context.log(`${context.bindingData.name}ファイル: マージしました。`);
+            yield posSalesRepository.processComplete(context);
         })).catch(err => {
             mergeSuccess = false;
             context.log(`${context.bindingData.name}ファイル: マージ分はエラーが出ています。`);
@@ -223,6 +225,52 @@ const posSalesRepository = {
         });
         server.close();
         return mergeSuccess;
+    }),
+    /**
+     * TRUEをprocessCompleteカラムに設定
+     */
+    processComplete: (context) => __awaiter(this, void 0, void 0, function* () {
+        const tableName = 'AzureWebJobsHostLogs' + moment(moment().toISOString()).format('YYYYMM');
+        const tableService = storage.createTableService();
+        const checkTableExists = () => __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, rejects) => {
+                tableService.createTableIfNotExists(tableName, (error, result, response) => resolve(result));
+            });
+        });
+        //ログテーブルがなければ止まります
+        const checkTbl = yield checkTableExists();
+        if (checkTbl.isSuccessful !== true)
+            return false;
+        //該当処理の情報を取得
+        const getCurrentHandle = (query) => __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                tableService.queryEntities(tableName, query, null, (err, data) => {
+                    if (err)
+                        reject(err);
+                    else
+                        resolve(data.entries.length > 0 ? data.entries[0] : undefined);
+                });
+            });
+        });
+        const query = new storage.TableQuery().where('RowKey == ?', context.funcId);
+        const processHandle = yield getCurrentHandle(query);
+        if (processHandle === undefined)
+            return false;
+        //TRUEをprocessCompleteカラムに設定
+        const setProcessComplete = (processHandle) => __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                tableService.insertOrReplaceEntity(tableName, processHandle, function (err) {
+                    if (err)
+                        reject(err);
+                    else
+                        resolve(true);
+                });
+            });
+        });
+        const entGen = storage.TableUtilities.entityGenerator;
+        processHandle.fileHandleComplete = entGen.String(context.bindingData.name);
+        processHandle.fileHandleUrl = entGen.String(context.bindingData.uri + '?sasString');
+        yield setProcessComplete(processHandle);
     }),
     /**
      * connect into SQL server to get datas had performance_day in period supplied on link

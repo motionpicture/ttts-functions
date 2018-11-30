@@ -60,7 +60,6 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
             yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
                 yield posRepo.saveToPosSales(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
                     yield posRepo.mergeFunc(context);
-                    yield moveListFileWorking(context);
                 }));
             }));
         }
@@ -144,44 +143,5 @@ function readCsv(context) {
                 });
             });
         });
-    });
-}
-/**
- * After saving to the sql server, move the file from the working directory to the complete directory, leaving the file name unchanged
- * @param fileReading object contains the file information you are reading
- */
-function moveListFileWorking(context) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const oriBlob = 'working/' + context.bindingData.name;
-        const targetBlob = 'complete/' + context.bindingData.name;
-        const tableName = 'AzureWebJobsHostLogs' + moment(moment().toISOString()).format('YYYYMM');
-        const tableService = storage.createTableService();
-        const checkTableExists = () => __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, rejects) => {
-                tableService.createTableIfNotExists(tableName, function (error, result, response) {
-                    resolve(result);
-                });
-            });
-        });
-        const checkTbl = yield checkTableExists();
-        if (checkTbl.isSuccessful === true) {
-            const query = new storage.TableQuery().where('RowKey == ?', context.funcId);
-            const getProcessInformation = () => __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => {
-                    tableService.queryEntities(tableName, query, null, (err, data) => {
-                        if (err)
-                            reject(err);
-                        else
-                            resolve(data.entries.length > 0 ? data.entries[0] : undefined);
-                    });
-                });
-            });
-            const processInformation = yield getProcessInformation();
-            if (processInformation.ErrorDetails === undefined) {
-                yield storage.createBlobService().startCopyBlob(context.bindingData.uri + '?sasString', process.env.AZURE_BLOB_STORAGE, targetBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () {
-                    yield storage.createBlobService().deleteBlobIfExists(process.env.AZURE_BLOB_STORAGE, oriBlob, (error, result, res) => __awaiter(this, void 0, void 0, function* () { }));
-                }));
-            }
-        }
     });
 }

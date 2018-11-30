@@ -4,6 +4,7 @@ import * as moment from 'moment';
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import * as configs from '../configs/app.js';
+import * as storage from 'azure-storage';
 const Logs = require("../libs/logHelper");
 
 export interface IMinMax {
@@ -248,6 +249,8 @@ const posSalesRepository = {
         }).then(async result => {
             mergeSuccess = true;
             context.log(`${context.bindingData.name}ファイル: マージしました。`);
+
+            await posSalesRepository.processComplete(context);
         }).catch(err => {
             mergeSuccess = false;
             context.log(`${context.bindingData.name}ファイル: マージ分はエラーが出ています。`);
@@ -256,6 +259,52 @@ const posSalesRepository = {
 
         server.close();
         return mergeSuccess;
+    },
+
+    /**
+     * TRUEをprocessCompleteカラムに設定
+     */
+    processComplete: async (context) => {
+        const tableName     = 'AzureWebJobsHostLogs' + moment(moment().toISOString()).format('YYYYMM');
+        const tableService  = storage.createTableService();
+
+        const checkTableExists: any = async () => {
+            return new Promise((resolve, rejects) => {
+                tableService.createTableIfNotExists(tableName, (error, result, response) => resolve(result));
+            });
+        };
+
+        //ログテーブルがなければ止まります
+        const checkTbl = await checkTableExists();
+        if (checkTbl.isSuccessful !== true) return false;
+
+        //該当処理の情報を取得
+        const getCurrentHandle: any = async (query) => {
+            return new Promise((resolve, reject) => {
+                tableService.queryEntities(tableName, query, null, (err, data) => {
+                    if (err) reject(err);
+                    else resolve(data.entries.length > 0 ? data.entries[0] : undefined);    
+                });
+            });
+        };
+        const query = new storage.TableQuery().where('RowKey == ?', context.funcId);
+        const processHandle = await getCurrentHandle(query);
+        if (processHandle === undefined) return false;
+
+        //TRUEをprocessCompleteカラムに設定
+        const setProcessComplete: any = async (processHandle: any) => {
+            return new Promise((resolve, reject) => {
+                tableService.insertOrReplaceEntity(tableName, processHandle, function(err) {
+                    if (err) reject(err);
+                    else resolve(true);
+                });
+            });
+        }
+
+        const entGen = storage.TableUtilities.entityGenerator;
+        processHandle.fileHandleComplete = entGen.String(context.bindingData.name);
+        processHandle.fileHandleUrl = entGen.String(context.bindingData.uri + '?sasString');
+        await setProcessComplete(processHandle);
     },
 
     /**

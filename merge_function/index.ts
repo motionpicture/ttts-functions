@@ -61,7 +61,6 @@ module.exports = async (context, myBlob) => {
                 
                 await posRepo.saveToPosSales(docs, context).then(async () => {
                     await posRepo.mergeFunc(context);
-                    await moveListFileWorking(context);
                 });
             });
         } else {
@@ -147,46 +146,6 @@ async function readCsv (context: any) {
             });
         });
     });
-}
-
-/**
- * After saving to the sql server, move the file from the working directory to the complete directory, leaving the file name unchanged
- * @param fileReading object contains the file information you are reading 
- */
-async function moveListFileWorking (context) {
-    const oriBlob    = 'working/' + context.bindingData.name;
-    const targetBlob = 'complete/' + context.bindingData.name;
-    
-    const tableName    = 'AzureWebJobsHostLogs' + moment(moment().toISOString()).format('YYYYMM');
-    const tableService = storage.createTableService();
-
-    const checkTableExists: any = async () => {
-        return new Promise((resolve, rejects) => {
-            tableService.createTableIfNotExists(tableName, function(error, result, response) {
-                resolve(result);
-            });
-        });
-    };
-    const checkTbl = await checkTableExists();
-
-    if (checkTbl.isSuccessful === true) {
-        const query = new storage.TableQuery().where('RowKey == ?', context.funcId);
-        const getProcessInformation: any = async () => {
-            return new Promise((resolve, reject) => {
-                tableService.queryEntities(tableName, query, null, (err, data) => {
-                    if (err) reject(err);
-                    else resolve(data.entries.length > 0 ? data.entries[0] : undefined);    
-                });
-            });
-        };
-
-        const processInformation = await getProcessInformation();
-        if (processInformation.ErrorDetails === undefined) {
-            await storage.createBlobService().startCopyBlob(context.bindingData.uri + '?sasString', process.env.AZURE_BLOB_STORAGE, targetBlob, async (error, result, res) => {
-                await storage.createBlobService().deleteBlobIfExists(process.env.AZURE_BLOB_STORAGE, oriBlob, async (error, result, res) => {})
-            });
-        }
-    }
 }
 
 

@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Security
 
+## v1.0.2 - 2018-12-12
+### Changed
+- [POS連携]timeoutエラーにも関わらず完了フォルダにファイルが移動する
+
 ## v1.0.1 - 2018-11-02
 ### Added
 - TimeoutをSlackに送信のバグを対応。

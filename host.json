@@ -11,6 +11,6 @@
         }
     },
     "queues": {
-        "maxDequeueCount": 5
+        "maxDequeueCount": 20
     }
 }

@@ -95,11 +95,10 @@ async function getCheckins (conds, context) {
                 doc.entry_flg = 'TRUE';
                 doc.entry_date = doc.checkins[0].when.toISOString();
             }
-
+            let performance_day = moment('20' + doc._id.substring(3,8),"YYYYMMDD").format("YYYY-MM-DD");
             return '(' + [
                 `'${doc.payment_no}'`
-                , `'${doc.seat_code}'`
-                , `'${doc.performance_day}'`
+                , `'${performance_day}'`
                 , `'${doc.entry_flg}'`
                 , doc.entry_date !== null ? `'${doc.entry_date}'` : `NULL`].join(',') + ')';
         }));

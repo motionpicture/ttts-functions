@@ -94,7 +94,7 @@ function getCheckins(conds, context) {
                 doc.entry_flg = 'TRUE';
                 doc.entry_date = doc.checkins[0].when.toISOString();
             }
-            let performance_day = moment('20' + doc._id.substring(3,6),"YYYYMMDD").format(YYYY-MM-DD);
+            let performance_day = moment('20' + doc._id.substring(3,8),"YYYYMMDD").format("YYYY-MM-DD");
             return '(' + [
                 `'${doc.payment_no}'`,
                 `'${performance_day}'`,

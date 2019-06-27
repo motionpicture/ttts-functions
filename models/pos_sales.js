@@ -114,7 +114,7 @@ const posSalesRepository = {
             if (entity.performance_day) {
                 performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
             }
-            const prop = entity.payment_no + entity.seat_code + performance_day;
+            const prop = 'TT-' + performance_day.substring(2,6) + '-' + entity.payment_no + '-0';
             if (reservations[prop] !== undefined) {
                 entity.entry_flg = reservations[prop].entry_flg;
                 entity.entry_date = reservations[prop].entry_date;

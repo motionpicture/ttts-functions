@@ -80,12 +80,14 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
 function getCheckins(entities, context) {
     return __awaiter(this, void 0, void 0, function* () {
         const conds = createConds4Checkins(entities);
+        context.log('conditions: ${conds}');
+
         return yield mongoose.model('Reservation').find({ $or: conds }, {
-            checkins: true, payment_no: true, seat_code: true, performance_day: true
+            checkins: true, payment_no: true, _id: true
         }).then(docs => {
             let checkins = {};
             docs.forEach(doc => {
-                const prop = doc.payment_no + doc.seat_code + conds.performance_day;
+                const prop = doc._id;
                 checkins[prop] = { entry_flg: 'FALSE', entry_date: null };
                 if (doc.checkins.length >= 1)
                     checkins[prop] = { entry_flg: 'TRUE', entry_date: doc.checkins[0].when.toISOString() };
@@ -104,7 +106,7 @@ function createConds4Checkins(entities) {
         if (entity.performance_day) {
             performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
         }
-        let order_number = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no;
+        let id = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no + '-0';
 
         // return { $and: [
         //         { payment_no: entity.payment_no },
@@ -113,8 +115,7 @@ function createConds4Checkins(entities) {
         //     ]
         // };
         return { $and: [
-                { order_number: order_number },
-                { seat_code: entity.seat_code }
+                { _id: id }
             ]
         };
     });

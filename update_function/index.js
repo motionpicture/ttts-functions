@@ -86,7 +86,7 @@ function getCheckins(conds, context) {
     return __awaiter(this, void 0, void 0, function* () {
         mongoose.connect(process.env.MONGOLAB_URI, configs.mongoose);
         const entities = yield mongoose.model('Reservation')
-            .find({ $or: conds }, { checkins: true, payment_no: true, seat_code: true, performance_day: true }).exec()
+            .find({ $or: conds }, { checkins: true, payment_no: true, _id: true }).exec()
             .then(docs => docs.map(doc => {
             doc.entry_flg = 'FALSE';
             doc.entry_date = null;
@@ -94,10 +94,10 @@ function getCheckins(conds, context) {
                 doc.entry_flg = 'TRUE';
                 doc.entry_date = doc.checkins[0].when.toISOString();
             }
+            let performance_day = moment('20' + doc._id.substring(3,6),"YYYYMMDD").format(YYYY-MM-DD);
             return '(' + [
                 `'${doc.payment_no}'`,
-                `'${doc.seat_code}'`,
-                `'${doc.performance_day}'`,
+                `'${performance_day}'`,
                 `'${doc.entry_flg}'`,
                 doc.entry_date !== null ? `'${doc.entry_date}'` : `NULL`
             ].join(',') + ')';

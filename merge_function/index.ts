@@ -78,7 +78,8 @@ module.exports = async (context, myBlob) => {
  * @param entities [PosSalesEntity, PosSalesEntity, ...]
  */
 async function getCheckins (entities, context) {
-    const conds = createConds4Checkins(entities);
+    const conds = createConds4Checkins(entities,context);
+    context.log(`conditions: ${conds}`);
     return await mongoose.model('Reservation').find({ $or: conds }, {
         checkins: true, payment_no: true, _id: true
     }).then(docs => { 
@@ -98,14 +99,16 @@ async function getCheckins (entities, context) {
  * Converted from the entities found in the csv file into conditions to search in mongoose
  * @param entities [PosSalesEntity, PosSalesEntity, ...]
  */
-function createConds4Checkins(entities: any) {
+function createConds4Checkins(entities: any,context) {
     return entities.map(entity => {
         let performance_day = null;
+        context.log(`entity: ${entity}`);
         if (entity.performance_day) {
             performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
         }
         let id = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no + '-0';
-        
+        context.log(`id: ${id}`);
+
         // return { $and: [
         //         { payment_no: entity.payment_no },
         //         { seat_code: entity.seat_code },

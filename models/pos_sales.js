@@ -279,7 +279,8 @@ const posSalesRepository = {
      */
     searchPosSales: (conditions, context) => __awaiter(this, void 0, void 0, function* () {
         let sqlString = `
-            SELECT id, payment_no, seat_code, performance_day 
+            SELECT id, payment_no, seat_code, performance_day,
+            'TT-' + substring(convert(NVARCHAR,performance_day,112),3,6) + '-' + payment_no + '-0' as _id
             FROM pos_sales 
             WHERE 1 = 1`;
         if (conditions.from != null) {
@@ -294,9 +295,7 @@ const posSalesRepository = {
                 connection.close();
                 return docs.recordset.map(doc => {
                     return { $and: [
-                            { payment_no: doc.payment_no },
-                            { seat_code: doc.seat_code },
-                            { performance_day: moment(doc.performance_day).format('YYYYMMDD') }
+                            { _id: doc._id }
                         ] };
                 });
             });
@@ -315,8 +314,8 @@ const posSalesRepository = {
             FROM dbo.pos_sales AS tgt
             INNER JOIN (
                 VALUES ${entities.join(',')}
-            ) AS src (payment_no, seat_code, performance_day, entry_flg, entry_date) 
-            ON (tgt.payment_no = src.payment_no AND tgt.seat_code = src.seat_code AND tgt.performance_day = src.performance_day);`;
+            ) AS src (payment_no, performance_day, entry_flg, entry_date) 
+            ON (tgt.payment_no = src.payment_no AND tgt.performance_day = src.performance_day);`;
         sql.close();
         yield sql.connect(configs.mssql).then((connection) => __awaiter(this, void 0, void 0, function* () {
             connection.request().query(updateSql).then(() => {

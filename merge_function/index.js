@@ -79,8 +79,8 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
  */
 function getCheckins(entities, context) {
     return __awaiter(this, void 0, void 0, function* () {
-        const conds = createConds4Checkins(entities);
-        context.log('conditions: ${conds}');
+        const conds = createConds4Checkins(entities, context);
+        context.log(`conditions: ${conds}`);
 
         return yield mongoose.model('Reservation').find({ $or: conds }, {
             checkins: true, payment_no: true, _id: true
@@ -100,13 +100,15 @@ function getCheckins(entities, context) {
  * Converted from the entities found in the csv file into conditions to search in mongoose
  * @param entities [PosSalesEntity, PosSalesEntity, ...]
  */
-function createConds4Checkins(entities) {
+function createConds4Checkins(entities, context) {
     return entities.map(entity => {
         let performance_day = null;
+        context.log(`entity: ${entity}`);
         if (entity.performance_day) {
             performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
         }
         let id = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no + '-0';
+        context.log(`id: ${id}`);
 
         // return { $and: [
         //         { payment_no: entity.payment_no },

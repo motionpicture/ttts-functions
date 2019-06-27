@@ -13,6 +13,7 @@ const schema = new mongoose.Schema({
         required: true
     },
     performance_day: String, //fsfasdf
+    order_number: String, //fsfasdf
     payment_no: String, //fsfsfdsfd
     checkins: { ///sfdsfasdf
         type: [{

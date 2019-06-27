@@ -84,7 +84,7 @@ async function getCheckins (entities, context) {
     }).then(docs => { 
         let checkins = {};
         docs.forEach(doc => {
-            const prop = doc.payment_no + doc.seat_code + doc.performance_day;
+            const prop = doc.payment_no + doc.seat_code + conds.performance_day;
             checkins[prop] = {entry_flg: 'FALSE', entry_date: null};
 
             if (doc.checkins.length >= 1)
@@ -104,11 +104,17 @@ function createConds4Checkins(entities: any) {
         if (entity.performance_day) {
             performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
         }
+        let order_number = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no;
+        
+        // return { $and: [
+        //         { payment_no: entity.payment_no },
+        //         { seat_code: entity.seat_code },
+        //         { performance_day: performance_day }]
+        // };
         
         return { $and: [
-                { payment_no: entity.payment_no },
-                { seat_code: entity.seat_code },
-                { performance_day: performance_day }]
+                { order_number: order_number },
+                { seat_code: entity.seat_code }]
         };
     });
 }

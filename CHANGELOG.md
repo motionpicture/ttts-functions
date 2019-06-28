@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Security
 
+## v1.0.3 - 2019-06-28
+### Changed
+- reservations に peformance_day がなくなった暫定対応
+　今後も可能性があるため、一旦_idで無理矢理参照
+
 ## v1.0.2 - 2018-12-12
 ### Changed
 - [POS連携]timeoutエラーにも関わらず完了フォルダにファイルが移動する

@@ -314,7 +314,8 @@ const posSalesRepository = {
      */
     searchPosSales: async (conditions, context) => {
         let sqlString = `
-            SELECT id, payment_no, seat_code, performance_day 
+            SELECT id, payment_no, seat_code, performance_day,
+            'TT-' + substring(convert(NVARCHAR,performance_day,112),3,6) + '-' + payment_no + '-0' as _id 
             FROM pos_sales 
             WHERE 1 = 1`;
         

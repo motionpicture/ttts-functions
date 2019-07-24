@@ -102,7 +102,6 @@ function getCheckins(entities, context) {
 function createConds4Checkins(entities) {
     return entities.map(entity => {
         let performance_day = null;
-        context.log(`entity: ${entity}`);
         if (entity.performance_day) {
             performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
         }

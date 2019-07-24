@@ -197,10 +197,10 @@ const posSalesRepository = {
                 WHERE NOT EXISTS (
                     SELECT * FROM pos_sales ps 
                     WHERE IsNull(ps.payment_no, '') = IsNull(pos_sales_tmp.payment_no, '') 
-                        AND IsNull(ps.seat_code, '') = IsNull(pos_sales_tmp.seat_code, '') 
                         AND IsNull(ps.performance_day, '') = IsNull(pos_sales_tmp.performance_day, '') 
                         AND IsNull(ps.receipt_no, '') = IsNull(pos_sales_tmp.receipt_no, '') 
                         AND IsNull(ps.no1, '') = IsNull(pos_sales_tmp.no1, '')
+                        AND IsNull(ps.no2, '') = IsNull(pos_sales_tmp.no2, '')
                 ) AND pos_sales_tmp.uuid = '${context.funcId}';`);
             yield new sql.Request(pool).query(`
                 UPDATE tgt 
@@ -209,10 +209,10 @@ const posSalesRepository = {
                 INNER JOIN pos_sales_tmp AS src ON (
                     src.uuid = '${context.funcId}' 
                     AND IsNull(tgt.payment_no, '') = IsNull(src.payment_no, '')
-                    AND IsNull(tgt.seat_code, '') = IsNull(src.seat_code, '') 
                     AND IsNull(tgt.performance_day, '') = IsNull(src.performance_day, '')
                     AND IsNull(tgt.receipt_no, '') = IsNull(src.receipt_no, '')
                     AND IsNull(tgt.no1, '') = IsNull(src.no1, '')
+                    AND IsNull(tgt.no2, '') = IsNull(src.no2, '')
                 );`);
             yield new sql.Request(pool).query(`DELETE FROM pos_sales_tmp WHERE uuid = '${context.funcId}';`);
         })).then((result) => __awaiter(this, void 0, void 0, function* () {

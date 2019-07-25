@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ### Security
 
+## v1.0.4 - 2019-07-25
+### Changed
+- checkin情報はSQLServer上のreservations_checkinsから取得（ストアドをBI側functionsからキック）するよう変更
+  checkin情報に関するコードを削除
+  
 ## v1.0.3 - 2019-06-28
 ### Changed
 - reservations に peformance_day がなくなった暫定対応

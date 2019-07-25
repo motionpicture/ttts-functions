@@ -124,20 +124,10 @@ const posSalesRepository = {
     /**
      * Set entry_flg and entry_date values to proceed to save to clipboard
      * @param entities [PosSalesEntity1, PosSalesEntity2, ...]
-     * @param reservations object {(doc.payment_no + doc.seat_code + doc.performance_day): xxx, ...}
      */
     setCheckins: async (entities: any, reservations: any) => {
         return entities.map (entity => {
-            let performance_day = null;
-            if (entity.performance_day) {
-                performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
-            }
-
-            const prop = 'TT-' + performance_day.replace(/\//g,'').substring(2,8) + '-' + entity.payment_no + '-0';
-            if (reservations[prop] !== undefined) {
-                entity.entry_flg = reservations[prop].entry_flg;
-                entity.entry_date = reservations[prop].entry_date;
-            }
+            entity.entry_flg = "FALSE";
             return entity;
         });
     },

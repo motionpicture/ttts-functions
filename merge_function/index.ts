@@ -56,8 +56,7 @@ module.exports = async (context, myBlob) => {
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
 
         if (errors.length == 0) {
-            const reservations = await getCheckins(entities, context);
-            await posRepo.setCheckins(entities, reservations).then(async (docs) => {
+            await posRepo.setCheckins(entities).then(async (docs) => {
                 
                 await posRepo.saveToPosSales(docs, context).then(async () => {
                     await posRepo.mergeFunc(context);
@@ -71,55 +70,6 @@ module.exports = async (context, myBlob) => {
         context.log(error);
         Logs.writeErrorLog(context, `${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
-}
-
-/**
- * Get data checkins from mongoose db
- * @param entities [PosSalesEntity, PosSalesEntity, ...]
- */
-async function getCheckins (entities, context) {
-    const conds = createConds4Checkins(entities,context);
-    context.log(`conditions: ${conds}`);
-    return await mongoose.model('Reservation').find({ $or: conds }, {
-        checkins: true, payment_no: true, _id: true
-    }).then(docs => { 
-        let checkins = {};
-        docs.forEach(doc => {
-            const prop = doc._id;
-            checkins[prop] = {entry_flg: 'FALSE', entry_date: null};
-
-            if (doc.checkins.length >= 1)
-                checkins[prop] = {entry_flg: 'TRUE', entry_date: doc.checkins[0].when.toISOString()};
-        })
-        return checkins;
-    });
-}
-
-/**
- * Converted from the entities found in the csv file into conditions to search in mongoose
- * @param entities [PosSalesEntity, PosSalesEntity, ...]
- */
-function createConds4Checkins(entities: any,context) {
-    return entities.map(entity => {
-        let performance_day = null;
-        context.log(`entity: ${entity}`);
-        if (entity.performance_day) {
-            performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
-        }
-        let id = 'TT-' + entity.performance_day.substring(2,6) + '-' + entity.payment_no + '-0';
-        context.log(`id: ${id}`);
-
-        // return { $and: [
-        //         { payment_no: entity.payment_no },
-        //         { seat_code: entity.seat_code },
-        //         { performance_day: performance_day }]
-        // };
-        
-        return { $and: [
-                { _id: id }
-            ]
-        };
-    });
 }
 
 /**

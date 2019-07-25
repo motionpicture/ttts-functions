@@ -56,8 +56,7 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
         const errors = yield posRepo.validation(entities, context);
         context.log(`${context.bindingData.name}ファイル: Number of lines appears error is ${errors.length}`);
         if (errors.length == 0) {
-            const reservations = yield getCheckins(entities, context);
-            yield posRepo.setCheckins(entities, reservations).then((docs) => __awaiter(this, void 0, void 0, function* () {
+            yield posRepo.setCheckins(entities).then((docs) => __awaiter(this, void 0, void 0, function* () {
                 yield posRepo.saveToPosSales(docs, context).then(() => __awaiter(this, void 0, void 0, function* () {
                     yield posRepo.mergeFunc(context);
                 }));
@@ -73,52 +72,7 @@ module.exports = (context, myBlob) => __awaiter(this, void 0, void 0, function* 
         Logs.writeErrorLog(context, `${context.bindingData.name}ファイル` + "\n" + error.stack);
     }
 });
-/**
- * Get data checkins from mongoose db
- * @param entities [PosSalesEntity, PosSalesEntity, ...]
- */
-function getCheckins(entities, context) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const conds = createConds4Checkins(entities);
 
-        return yield mongoose.model('Reservation').find({ $or: conds }, {
-            checkins: true, payment_no: true, _id: true
-        }).then(docs => {
-            let checkins = {};
-            docs.forEach(doc => {
-                const prop = doc._id;
-                checkins[prop] = { entry_flg: 'FALSE', entry_date: null };
-                if (doc.checkins.length >= 1)
-                    checkins[prop] = { entry_flg: 'TRUE', entry_date: doc.checkins[0].when.toISOString() };
-            });
-            return checkins;
-        });
-    });
-}
-/**
- * Converted from the entities found in the csv file into conditions to search in mongoose
- * @param entities [PosSalesEntity, PosSalesEntity, ...]
- */
-function createConds4Checkins(entities) {
-    return entities.map(entity => {
-        let performance_day = null;
-        if (entity.performance_day) {
-            performance_day = moment(entity.performance_day, "YYYY/MM/DD HH:mm:ss").format("YYYYMMDD");
-        }
-        let id = 'TT-' + entity.performance_day.replace(/\//g,'').substring(2,8) + '-' + entity.payment_no + '-0';
-
-        // return { $and: [
-        //         { payment_no: entity.payment_no },
-        //         { seat_code: entity.seat_code },
-        //         { performance_day: performance_day }
-        //     ]
-        // };
-        return { $and: [
-                { _id: id }
-            ]
-        };
-    });
-}
 /**
  * Reads all the records in the csv file to create entities stored in the sql server
  * @param filePath string Relative path to csv file

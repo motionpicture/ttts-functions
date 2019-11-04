@@ -16,7 +16,7 @@
     "iconv-lite": "^0.4.24",
     "js-yaml": "^3.12.0",
     "moment": "^2.22.2",
-    "mongoose": "^4.13.14",
+    "mongoose": "^5.7.5",
     "mssql": "^4.1.0",
     "request": "^2.88.0",
     "tedious": "2.2.4"
